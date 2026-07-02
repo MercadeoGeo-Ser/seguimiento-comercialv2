@@ -2,6 +2,7 @@ import { getRango } from "./_lib/bitrix.js";
 
 const GRAPH_URL = "https://graph.facebook.com/v25.0";
 const PAGE_ID = "378061358891359";
+const AD_ACCOUNT_ID = "act_2136722620087946";
 
 function rangoTimestamps(range) {
   const { from, to } = getRango(range);
@@ -66,6 +67,46 @@ async function contarLeads(formId, sinceTs, untilTs, pageToken) {
   return leads.length;
 }
 
+async function obtenerCampanasWhatsapp(pageToken) {
+  const filtering = JSON.stringify([
+    { field: "objective", operator: "IN", value: ["MESSAGES", "OUTCOME_ENGAGEMENT"] },
+  ]);
+
+  const url = `${GRAPH_URL}/${AD_ACCOUNT_ID}/campaigns?fields=name,objective,insights{spend,impressions,actions}&filtering=${encodeURIComponent(filtering)}&access_token=${pageToken}`;
+
+  const response = await fetch(url);
+  const json = await response.json();
+
+  if (json.error) {
+    throw new Error(json.error.message || "Error de Meta Graph API");
+  }
+
+  const campanas = (json.data || [])
+    .map((c) => ({
+      nombre: c.name,
+      gasto: parseFloat(c.insights?.data?.[0]?.spend || 0),
+      impresiones: parseInt(c.insights?.data?.[0]?.impressions || 0, 10),
+      mensajes: parseInt(
+        c.insights?.data?.[0]?.actions?.find(
+          (a) => a.action_type === "onsite_conversion.messaging_conversation_started_7d"
+        )?.value || 0,
+        10
+      ),
+    }))
+    .filter((c) => c.gasto > 0);
+
+  const totalGasto = campanas.reduce((s, c) => s + c.gasto, 0);
+  const totalMensajes = campanas.reduce((s, c) => s + c.mensajes, 0);
+
+  return {
+    ok: true,
+    campanas,
+    totalGasto: totalGasto.toFixed(2),
+    totalMensajes,
+    costoPorMensaje: totalMensajes > 0 ? (totalGasto / totalMensajes).toFixed(2) : 0,
+  };
+}
+
 const BATCH = 5;
 const TTL = 30 * 60 * 1000; // 30 minutos
 
@@ -76,20 +117,27 @@ const cache = {};
 export default async function handler(req, res) {
   try {
     const range = req.query.range || "today";
-    const cacheKey = `meta_${range}`;
+    const tipo = req.query.tipo;
+    const cacheKey = tipo === "whatsapp" ? `whatsapp_${range}` : `meta_${range}`;
     const ahora = Date.now();
 
     if (cache[cacheKey] && ahora - cache[cacheKey].ts < TTL) {
       return res.status(200).json({ ...cache[cacheKey].data, cached: true });
     }
 
-    const { sinceTs, untilTs } = rangoTimestamps(range);
     const USER_TOKEN = process.env.META_ACCESS_TOKEN;
-
     const PAGE_TOKEN = await obtenerPageToken(USER_TOKEN);
     if (!PAGE_TOKEN) {
       return res.status(400).json({ ok: false, error: "Página no encontrada" });
     }
+
+    if (tipo === "whatsapp") {
+      const resultado = await obtenerCampanasWhatsapp(PAGE_TOKEN);
+      cache[cacheKey] = { data: resultado, ts: ahora };
+      return res.status(200).json(resultado);
+    }
+
+    const { sinceTs, untilTs } = rangoTimestamps(range);
 
     const forms = await getAllForms(PAGE_TOKEN, PAGE_ID);
     const formsActivos = forms.filter((f) => (f.leads_count || 0) > 0);

@@ -4,6 +4,7 @@ import Resumen from "./tabs/Resumen.jsx";
 import Embudo from "./tabs/Embudo.jsx";
 import Rendimiento from "./tabs/Rendimiento.jsx";
 import MetaVsCRM from "./tabs/MetaVsCRM.jsx";
+import WhatsAppLeads from "./tabs/WhatsAppLeads.jsx";
 
 const TABS = [
   { id: "live-feed", label: "Live Feed" },
@@ -46,6 +47,7 @@ export default function App() {
         {activeTab === "embudo" && <Embudo />}
         {activeTab === "rendimiento" && <Rendimiento />}
         {activeTab === "meta-crm" && <MetaVsCRM />}
+        {activeTab === "whatsapp-leads" && <WhatsAppLeads />}
       </main>
     </div>
   );
