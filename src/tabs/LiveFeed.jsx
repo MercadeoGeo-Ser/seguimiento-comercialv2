@@ -23,7 +23,7 @@ const FUENTE_BADGE = {
   Otro: "bg-gray-100 text-gray-700",
 };
 
-const PRIMERA_ETAPA = "C49:NEW";
+const PRIMERA_ETAPA_RAW = "C49:NEW";
 
 function tiempoRelativo(isoString) {
   const diff = Date.now() - new Date(isoString).getTime();
@@ -115,7 +115,7 @@ export default function LiveFeed() {
   }, [range, asesor, fuente]);
 
   const metaAdsCount = leads.filter((lead) => lead.fuente === "Meta Ads").length;
-  const sinGestionarCount = leads.filter((lead) => lead.etapa === PRIMERA_ETAPA).length;
+  const sinGestionarCount = leads.filter((lead) => lead.etapaRaw === PRIMERA_ETAPA_RAW).length;
   const otrosCount = leads.filter(
     (lead) => lead.fuente === "WhatsApp" || lead.fuente === "Orgánico Social"
   ).length;
@@ -187,11 +187,10 @@ export default function LiveFeed() {
             <tbody>
               {leads.map((lead) => {
                 const asesorInfo = asesorPorId(lead.asesorId);
-                const cliente = [lead.nombre, lead.apellido].filter(Boolean).join(" ") || "—";
                 return (
                   <tr key={lead.id} className="border-b border-gray-100 last:border-0">
                     <td className="px-4 py-3 font-medium text-gray-900">#{lead.id}</td>
-                    <td className="px-4 py-3 text-gray-700">{cliente}</td>
+                    <td className="px-4 py-3 text-gray-700">{lead.cliente}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`rounded-full px-2 py-1 text-xs font-medium ${

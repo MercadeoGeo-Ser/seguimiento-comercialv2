@@ -5,8 +5,17 @@ const ASESOR_IDS = ["19", "1185", "6417"];
 const FIELDS = [
   "ID", "TITLE", "ASSIGNED_BY_ID", "STAGE_ID", "SOURCE_ID",
   "DATE_CREATE", "OPPORTUNITY", "CATEGORY_ID", "NAME", "LAST_NAME",
-  "UF_CRM_1769101707140"
+  "UF_CRM_1769101707140", "CONTACT_ID"
 ];
+
+const ETAPAS = {
+  "C49:NEW":         "Nuevo",
+  "C49:UC_P9SE7Z":   "En gestión",
+  "C49:UC_5M8VT8":   "En proceso",
+  "C49:UC_A7JB2B":   "Cotización",
+  "C49:WON":         "Ganado",
+  "C49:LOSE":        "Perdido",
+};
 
 function normalizarFecha(raw) {
   if (!raw) return new Date().toISOString();
@@ -148,9 +157,11 @@ export default async function handler(req, res) {
         titulo: deal.TITLE,
         nombre: deal.NAME,
         apellido: deal.LAST_NAME,
+        cliente: [deal.NAME, deal.LAST_NAME].filter(Boolean).join(' ').trim() || deal.TITLE?.split(' - ')[1] || 'Sin nombre',
         asesorId: deal.ASSIGNED_BY_ID,
         asesor: nombreAsesor(deal.ASSIGNED_BY_ID),
-        etapa: deal.STAGE_ID,
+        etapa: ETAPAS[deal.STAGE_ID] || deal.STAGE_ID,
+        etapaRaw: deal.STAGE_ID,
         oportunidad: deal.OPPORTUNITY,
         formulario: deal.UF_CRM_1769101707140 || null,
         fuente: clasificarFuente(deal),
