@@ -39,19 +39,10 @@ function combinarPorFormulario(porFormularioMeta, leadsBitrix) {
     conteoBitrix[lead.formulario] = (conteoBitrix[lead.formulario] || 0) + 1;
   }
 
-  const nombres = new Set([
-    ...porFormularioMeta.map((f) => f.nombre),
-    ...Object.keys(conteoBitrix),
-  ]);
-
-  return [...nombres]
-    .map((nombre) => {
-      const meta = porFormularioMeta.find((f) => f.nombre === nombre);
-      const leadsMeta = meta ? meta.leads : 0;
-      const leadsCRM = conteoBitrix[nombre] || 0;
-      return { nombre, leadsMeta, leadsCRM, diferencia: leadsMeta - leadsCRM };
-    })
-    .sort((a, b) => b.leadsMeta - a.leadsMeta);
+  return porFormularioMeta.map(({ nombre, leads: leadsMeta }) => {
+    const leadsCRM = conteoBitrix[nombre] || 0;
+    return { nombre, leadsMeta, leadsCRM, diferencia: leadsMeta - leadsCRM };
+  });
 }
 
 export default function MetaVsCRM() {
@@ -72,7 +63,7 @@ export default function MetaVsCRM() {
       try {
         const [metaRes, leadsRes] = await Promise.all([
           fetch(`/api/meta?range=${range}`),
-          fetch(`/api/leads?range=${range}`),
+          fetch(`/api/leads?range=${range}&fuente=${encodeURIComponent("Meta Ads")}`),
         ]);
         const metaData = await metaRes.json();
         const leadsData = await leadsRes.json();
@@ -81,10 +72,8 @@ export default function MetaVsCRM() {
         if (!metaData.ok) throw new Error(metaData.error || "Error al cargar Meta");
         if (!leadsData.ok) throw new Error(leadsData.error || "Error al cargar Bitrix");
 
-        const leadsConFormulario = leadsData.leads.filter((l) => l.formulario);
-
         setTotalMeta(metaData.totalMeta);
-        setTotalCRM(leadsConFormulario.length);
+        setTotalCRM(leadsData.total);
         setFilas(combinarPorFormulario(metaData.porFormulario, leadsData.leads));
       } catch (err) {
         if (!cancelado) {
@@ -124,7 +113,7 @@ export default function MetaVsCRM() {
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <SummaryCard label="Meta Ads" value={totalMeta} />
-        <SummaryCard label="Bitrix CRM" value={totalCRM} />
+        <SummaryCard label="En Bitrix" value={totalCRM} />
         <SummaryCard
           label="Diferencia"
           value={
@@ -139,9 +128,9 @@ export default function MetaVsCRM() {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
-              <th className="px-4 py-3">Formulario</th>
-              <th className="px-4 py-3">Leads en Meta</th>
-              <th className="px-4 py-3">Leads en CRM</th>
+              <th className="px-4 py-3">Nombre formulario</th>
+              <th className="px-4 py-3">Leads Meta</th>
+              <th className="px-4 py-3">Leads Bitrix</th>
               <th className="px-4 py-3">Diferencia</th>
             </tr>
           </thead>

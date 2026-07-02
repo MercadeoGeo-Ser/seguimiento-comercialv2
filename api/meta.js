@@ -81,7 +81,7 @@ export default async function handler(req, res) {
     res.status(200).json({
       ok: true,
       totalMeta,
-      porFormulario,
+      porFormulario: porFormulario.filter((f) => f.leads > 0),
       fechaConsulta: new Date().toISOString(),
     });
   } catch (error) {
