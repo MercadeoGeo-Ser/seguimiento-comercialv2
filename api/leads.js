@@ -5,7 +5,7 @@ const ASESOR_IDS = ["19", "1185", "6417"];
 const FIELDS = [
   "ID", "TITLE", "ASSIGNED_BY_ID", "STAGE_ID", "SOURCE_ID",
   "DATE_CREATE", "OPPORTUNITY", "CATEGORY_ID", "NAME", "LAST_NAME",
-  "TRACE", "UF_CRM_1769101707140"
+  "UF_CRM_1769101707140"
 ];
 
 function normalizarFecha(raw) {
@@ -18,10 +18,9 @@ function fechaColombia(iso) {
 }
 
 function clasificarFuente(deal) {
-  const trace = (deal.TRACE || "").toUpperCase();
   const form = deal.UF_CRM_1769101707140 || "";
   const src = (deal.SOURCE_ID || "").toUpperCase();
-  if (trace.includes("LEAD AD") || form !== "") return "Meta Ads";
+  if (form !== "") return "Meta Ads";
   if (src.includes("FACEBOOK") || src.includes("INSTAGRAM")) return "Orgánico Social";
   if (src === "UC_A7JB2B") return "WhatsApp";
   return "Otro";
@@ -50,6 +49,23 @@ function nombreAsesor(assignedById) {
   return asesor ? asesor.nombre : null;
 }
 
+function buildBody(filter, start) {
+  const body = new URLSearchParams();
+
+  Object.entries(filter).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach((v, i) => body.append(`filter[${key}][${i}]`, v));
+    } else {
+      body.append(`filter[${key}]`, value);
+    }
+  });
+
+  FIELDS.forEach((field, i) => body.append(`select[${i}]`, field));
+  body.append("start", String(start));
+
+  return body;
+}
+
 async function fetchDeals(filter) {
   const url = `${process.env.BITRIX_REST_URL}/crm.deal.list.json`;
   const deals = [];
@@ -58,8 +74,7 @@ async function fetchDeals(filter) {
   while (start !== null) {
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filter, select: FIELDS, start }),
+      body: buildBody(filter, start),
     });
 
     const data = await response.json();
@@ -83,8 +98,7 @@ export default async function handler(req, res) {
       body.append("select[1]", "DATE_CREATE");
       body.append("select[2]", "ASSIGNED_BY_ID");
       body.append("select[3]", "SOURCE_ID");
-      body.append("select[4]", "TRACE");
-      body.append("select[5]", "UF_CRM_1769101707140");
+      body.append("select[4]", "UF_CRM_1769101707140");
       body.append("start", "0");
 
       const response = await fetch(`${process.env.BITRIX_REST_URL}/crm.deal.list.json`, {
