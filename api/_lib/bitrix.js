@@ -1,5 +1,26 @@
 export const ASESOR_IDS = ["19", "1185", "6417"];
 
+// Etapas reales del pipeline Transaccional (categoryId 49), en orden de SORT
+// (via crm.dealcategory.stage.list.json?id=49)
+export const ETAPAS = {
+  "C49:NEW":                "Contacto inicial",
+  "C49:UC_P9SE7Z":          "No contesta",
+  "C49:UC_5M8VT8":          "En cotización",
+  "C49:UC_4Y8FTH":          "Revisión cotización",
+  "C49:PREPARATION":        "Cotización enviada",
+  "C49:PREPAYMENT_INVOIC":  "Seguimiento cotización",
+  "C49:UC_IG8XXA":          "Ajuste cotización",
+  "C49:FINAL_INVOICE":      "Reserva confirmada",
+  "C49:UC_WMZ03O":          "Contrato",
+  "C49:UC_YO6ROS":          "Revisión contrato",
+  "C49:UC_6A17DV":          "Ajuste contrato",
+  "C49:UC_3J1LL7":          "Pago",
+  "C49:UC_H36U8W":          "Confirmación pago",
+  "C49:UC_FNYTZ5":          "Emisión aérea + PT",
+  "C49:WON":                "CERRADO — Ganado",
+  "C49:LOSE":               "CERRADO — Perdido"
+};
+
 // Clave YYYY-MM-DD (día Colombia) usada solo para calcular rangos de fecha
 export function claveFechaColombia(iso) {
   return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });

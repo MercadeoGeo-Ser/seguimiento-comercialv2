@@ -1,30 +1,11 @@
 import { ASESORES } from "../src/constants.js";
-import { ASESOR_IDS, getRango, compensarFecha, fechaFin, fechaColombia, fetchDeals } from "./_lib/bitrix.js";
+import { ASESOR_IDS, ETAPAS, getRango, compensarFecha, fechaFin, fechaColombia, fetchDeals } from "./_lib/bitrix.js";
 
 const FIELDS = [
   "ID", "TITLE", "ASSIGNED_BY_ID", "STAGE_ID", "SOURCE_ID",
   "DATE_CREATE", "OPPORTUNITY", "CATEGORY_ID", "NAME", "LAST_NAME",
   "UF_CRM_1769101707140", "CONTACT_ID"
 ];
-
-const ETAPAS = {
-  "C49:NEW":                "Contacto inicial",
-  "C49:UC_P9SE7Z":          "No contesta",
-  "C49:UC_5M8VT8":          "En cotización",
-  "C49:UC_4Y8FTH":          "Revisión cotización",
-  "C49:PREPARATION":        "Cotización enviada",
-  "C49:PREPAYMENT_INVOIC":  "Seguimiento cotización",
-  "C49:UC_IG8XXA":          "Ajuste cotización",
-  "C49:FINAL_INVOICE":      "Reserva confirmada",
-  "C49:UC_WMZ03O":          "Contrato",
-  "C49:UC_YO6ROS":          "Revisión contrato",
-  "C49:UC_6A17DV":          "Ajuste contrato",
-  "C49:UC_3J1LL7":          "Pago",
-  "C49:UC_H36U8W":          "Confirmación pago",
-  "C49:UC_FNYTZ5":          "Emisión aérea + PT",
-  "C49:WON":                "CERRADO — Ganado",
-  "C49:LOSE":               "CERRADO — Perdido"
-};
 
 function normalizarFecha(raw) {
   if (!raw) return new Date().toISOString();
