@@ -50,6 +50,7 @@ export default function MetaVsCRM() {
   const [filas, setFilas] = useState([]);
   const [totalMeta, setTotalMeta] = useState(0);
   const [totalCRM, setTotalCRM] = useState(0);
+  const [cached, setCached] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -74,6 +75,7 @@ export default function MetaVsCRM() {
 
         setTotalMeta(metaData.totalMeta);
         setTotalCRM(leadsData.total);
+        setCached(Boolean(metaData.cached));
         setFilas(combinarPorFormulario(metaData.porFormulario, leadsData.leads));
       } catch (err) {
         if (!cancelado) {
@@ -81,6 +83,7 @@ export default function MetaVsCRM() {
           setFilas([]);
           setTotalMeta(0);
           setTotalCRM(0);
+          setCached(false);
         }
       } finally {
         if (!cancelado) setLoading(false);
@@ -123,6 +126,12 @@ export default function MetaVsCRM() {
           }
         />
       </div>
+
+      {cached && (
+        <span style={{ fontSize: 11, color: "#94a3b8" }}>
+          ⚡ Datos en caché · actualiza en 30 min
+        </span>
+      )}
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
         <table className="w-full text-left text-sm">

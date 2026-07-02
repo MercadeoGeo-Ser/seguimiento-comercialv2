@@ -67,10 +67,22 @@ async function contarLeads(formId, sinceTs, untilTs, pageToken) {
 }
 
 const BATCH = 5;
+const TTL = 30 * 60 * 1000; // 30 minutos
+
+// Variable de modulo: persiste entre invocaciones mientras la instancia
+// serverless siga viva (cache en memoria, no compartida entre regiones).
+const cache = {};
 
 export default async function handler(req, res) {
   try {
-    const { range } = req.query;
+    const range = req.query.range || "today";
+    const cacheKey = `meta_${range}`;
+    const ahora = Date.now();
+
+    if (cache[cacheKey] && ahora - cache[cacheKey].ts < TTL) {
+      return res.status(200).json({ ...cache[cacheKey].data, cached: true });
+    }
+
     const { sinceTs, untilTs } = rangoTimestamps(range);
     const USER_TOKEN = process.env.META_ACCESS_TOKEN;
 
@@ -96,12 +108,16 @@ export default async function handler(req, res) {
       });
     }
 
-    res.status(200).json({
+    const resultado = {
       ok: true,
       totalMeta,
       porFormulario: resultados.filter((f) => f.leads > 0),
       fechaConsulta: new Date().toISOString(),
-    });
+    };
+
+    cache[cacheKey] = { data: resultado, ts: ahora };
+
+    res.status(200).json(resultado);
   } catch (error) {
     res.status(500).json({ ok: false, error: error.message });
   }
