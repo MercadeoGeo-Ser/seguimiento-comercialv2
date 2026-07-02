@@ -44,6 +44,11 @@ function compensarFecha(fechaStr) {
   return new Date(Date.UTC(y, m - 1, d, 8, 0, 0)).toISOString();
 }
 
+function fechaFin(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + 1, 8, 0, 0)).toISOString();
+}
+
 function nombreAsesor(assignedById) {
   const asesor = ASESORES.find((a) => a.id === String(assignedById));
   return asesor ? asesor.nombre : null;
@@ -121,7 +126,7 @@ export default async function handler(req, res) {
       CATEGORY_ID: "49",
       ASSIGNED_BY_ID: ASESOR_IDS,
       ">=DATE_CREATE": compensarFecha(from),
-      "<=DATE_CREATE": compensarFecha(to),
+      "<=DATE_CREATE": fechaFin(to),
     };
 
     const deals = await fetchDeals(filter);
