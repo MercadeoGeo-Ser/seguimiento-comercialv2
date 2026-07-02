@@ -9,12 +9,22 @@ const FIELDS = [
 ];
 
 const ETAPAS = {
-  "C49:NEW":         "Nuevo",
-  "C49:UC_P9SE7Z":   "En gestión",
-  "C49:UC_5M8VT8":   "En proceso",
-  "C49:UC_A7JB2B":   "Cotización",
-  "C49:WON":         "Ganado",
-  "C49:LOSE":        "Perdido",
+  "C49:NEW":                "Contacto inicial",
+  "C49:UC_P9SE7Z":          "No contesta",
+  "C49:UC_5M8VT8":          "En cotización",
+  "C49:UC_4Y8FTH":          "Revisión cotización",
+  "C49:PREPARATION":        "Cotización enviada",
+  "C49:PREPAYMENT_INVOIC":  "Seguimiento cotización",
+  "C49:UC_IG8XXA":          "Ajuste cotización",
+  "C49:FINAL_INVOICE":      "Reserva confirmada",
+  "C49:UC_WMZ03O":          "Contrato",
+  "C49:UC_YO6ROS":          "Revisión contrato",
+  "C49:UC_6A17DV":          "Ajuste contrato",
+  "C49:UC_3J1LL7":          "Pago",
+  "C49:UC_H36U8W":          "Confirmación pago",
+  "C49:UC_FNYTZ5":          "Emisión aérea + PT",
+  "C49:WON":                "CERRADO — Ganado",
+  "C49:LOSE":               "CERRADO — Perdido"
 };
 
 function normalizarFecha(raw) {
@@ -114,42 +124,6 @@ async function fetchDeals(filter) {
 }
 
 export default async function handler(req, res) {
-  if (req.query.debug === "stages") {
-    try {
-      const response = await fetch(
-        `${process.env.BITRIX_REST_URL}/crm.dealcategory.stage.list.json?id=49`
-      );
-      const json = await response.json();
-      res.status(200).json(json);
-    } catch (error) {
-      res.status(500).json({ ok: false, error: error.message });
-    }
-    return;
-  }
-
-  if (req.query.debug === "1") {
-    try {
-      const body = new URLSearchParams();
-      body.append("filter[CATEGORY_ID]", "49");
-      body.append("select[0]", "ID");
-      body.append("select[1]", "DATE_CREATE");
-      body.append("select[2]", "ASSIGNED_BY_ID");
-      body.append("select[3]", "SOURCE_ID");
-      body.append("select[4]", "UF_CRM_1769101707140");
-      body.append("start", "0");
-
-      const response = await fetch(`${process.env.BITRIX_REST_URL}/crm.deal.list.json`, {
-        method: "POST",
-        body,
-      });
-      const json = await response.json();
-      res.status(200).json({ raw: json.result?.slice(0, 5), total: json.total });
-    } catch (error) {
-      res.status(500).json({ ok: false, error: error.message });
-    }
-    return;
-  }
-
   try {
     const { range, asesor, fuente } = req.query;
     const { from, to } = getRango(range);
