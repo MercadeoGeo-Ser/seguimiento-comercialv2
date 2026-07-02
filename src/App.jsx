@@ -3,6 +3,7 @@ import LiveFeed from "./tabs/LiveFeed.jsx";
 import Resumen from "./tabs/Resumen.jsx";
 import Embudo from "./tabs/Embudo.jsx";
 import Rendimiento from "./tabs/Rendimiento.jsx";
+import MetaVsCRM from "./tabs/MetaVsCRM.jsx";
 
 const TABS = [
   { id: "live-feed", label: "Live Feed" },
@@ -44,6 +45,7 @@ export default function App() {
         {activeTab === "resumen" && <Resumen />}
         {activeTab === "embudo" && <Embudo />}
         {activeTab === "rendimiento" && <Rendimiento />}
+        {activeTab === "meta-crm" && <MetaVsCRM />}
       </main>
     </div>
   );
