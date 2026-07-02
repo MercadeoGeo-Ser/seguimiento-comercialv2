@@ -51,7 +51,7 @@ function nombreAsesor(assignedById) {
 }
 
 async function fetchDeals(filter) {
-  const url = `${process.env.BITRIX_REST_URL}/${process.env.BITRIX_WEBHOOK_TOKEN}/crm.deal.list.json`;
+  const url = `${process.env.BITRIX_REST_URL}/crm.deal.list.json`;
   const deals = [];
   let start = 0;
 
@@ -77,12 +77,13 @@ async function fetchDeals(filter) {
 export default async function handler(req, res) {
   try {
     const { range, asesor, fuente } = req.query;
-    const { from } = getRango(range);
+    const { from, to } = getRango(range);
 
     const filter = {
       CATEGORY_ID: "49",
       ASSIGNED_BY_ID: ASESOR_IDS,
       ">=DATE_CREATE": compensarFecha(from),
+      "<=DATE_CREATE": compensarFecha(to),
     };
 
     const deals = await fetchDeals(filter);
