@@ -38,6 +38,49 @@ export default function Resumen() {
   const [totales, setTotales] = useState({ totalLeads: 0, metaAds: 0, ganados: 0, conversion: "0.0" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [captura, setCaptura] = useState({ totalMeta: 0, totalBitrix: 0 });
+  const [porEtapa, setPorEtapa] = useState({});
+  const [totalLeads, setTotalLeads] = useState(0);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarCaptura() {
+      try {
+        const [leadsRes, metaRes] = await Promise.all([
+          fetch(`/api/leads?range=${range}`),
+          fetch(`/api/meta?range=${range}`),
+        ]);
+        const leadsJson = await leadsRes.json();
+        const metaJson = await metaRes.json();
+        if (cancelado) return;
+
+        if (leadsJson.ok && metaJson.ok) {
+          const leads = leadsJson.leads || [];
+          const totalBitrix = leads.filter((l) => l.fuente === "Meta Ads").length;
+          setCaptura({ totalMeta: metaJson.totalMeta || 0, totalBitrix });
+
+          const etapas = {};
+          leads.forEach((l) => {
+            etapas[l.etapa] = (etapas[l.etapa] || 0) + 1;
+          });
+          setPorEtapa(etapas);
+          setTotalLeads(leads.length);
+        }
+      } catch {
+        if (!cancelado) {
+          setCaptura({ totalMeta: 0, totalBitrix: 0 });
+          setPorEtapa({});
+          setTotalLeads(0);
+        }
+      }
+    }
+
+    cargarCaptura();
+    return () => {
+      cancelado = true;
+    };
+  }, [range]);
 
   useEffect(() => {
     let cancelado = false;
@@ -74,6 +117,10 @@ export default function Resumen() {
     };
   }, [range]);
 
+  const perdidos = captura.totalMeta - captura.totalBitrix;
+  const tasaCaptura =
+    captura.totalMeta > 0 ? ((captura.totalBitrix / captura.totalMeta) * 100).toFixed(1) : "0";
+
   return (
     <div className="flex flex-col gap-4 p-6">
       <div className="flex flex-wrap gap-3">
@@ -95,6 +142,52 @@ export default function Resumen() {
         <SummaryCard label="Meta Ads" value={totales.metaAds} />
         <SummaryCard label="Ganados" value={totales.ganados} />
         <SummaryCard label="Conversión" value={`${totales.conversion}%`} />
+      </div>
+
+      {perdidos > 0 && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 16, marginBottom: 24 }}>
+          <div style={{ fontWeight: 600, color: "#dc2626", marginBottom: 4 }}>
+            ⚠️ {perdidos} leads de Meta no registrados en Bitrix
+          </div>
+          <div style={{ fontSize: 13, color: "#6b7280" }}>
+            Meta: {captura.totalMeta} · Bitrix: {captura.totalBitrix} · Tasa de captura:{" "}
+            <strong
+              style={{
+                color: tasaCaptura >= 90 ? "#16a34a" : tasaCaptura >= 70 ? "#d97706" : "#dc2626",
+              }}
+            >
+              {tasaCaptura}%
+            </strong>
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
+          Distribución por etapa
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {Object.entries(porEtapa)
+            .sort((a, b) => b[1] - a[1])
+            .map(([etapa, count]) => (
+              <div
+                key={etapa}
+                style={{
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 20,
+                  padding: "4px 12px",
+                  fontSize: 12,
+                }}
+              >
+                <span style={{ color: "#374151" }}>{etapa}</span>
+                <span style={{ fontWeight: 700, color: "#6366f1", marginLeft: 6 }}>{count}</span>
+                <span style={{ color: "#94a3b8", marginLeft: 4 }}>
+                  {((count / totalLeads) * 100).toFixed(0)}%
+                </span>
+              </div>
+            ))}
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">

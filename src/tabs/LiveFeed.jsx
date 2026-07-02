@@ -64,6 +64,13 @@ function SummaryPill({ label, value }) {
   );
 }
 
+function colorTasaCaptura(tasa) {
+  const valor = parseFloat(tasa);
+  if (valor >= 90) return "#16a34a";
+  if (valor >= 70) return "#d97706";
+  return "#dc2626";
+}
+
 export default function LiveFeed() {
   const [range, setRange] = useState("today");
   const [asesor, setAsesor] = useState("");
@@ -72,6 +79,38 @@ export default function LiveFeed() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [filtroEtapa, setFiltroEtapa] = useState(null);
+  const [captura, setCaptura] = useState({ totalMeta: 0, totalBitrix: 0 });
+
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarCaptura() {
+      try {
+        const [leadsRes, metaRes] = await Promise.all([
+          fetch(`/api/leads?range=${range}`),
+          fetch(`/api/meta?range=${range}`),
+        ]);
+        const leadsJson = await leadsRes.json();
+        const metaJson = await metaRes.json();
+        if (cancelado) return;
+
+        if (leadsJson.ok && metaJson.ok) {
+          const totalBitrix = (leadsJson.leads || []).filter(
+            (l) => l.fuente === "Meta Ads"
+          ).length;
+          setCaptura({ totalMeta: metaJson.totalMeta || 0, totalBitrix });
+        }
+      } catch {
+        if (!cancelado) setCaptura({ totalMeta: 0, totalBitrix: 0 });
+      }
+    }
+
+    cargarCaptura();
+    return () => {
+      cancelado = true;
+    };
+  }, [range]);
 
   useEffect(() => {
     let cancelado = false;
@@ -119,6 +158,18 @@ export default function LiveFeed() {
   const otrosCount = leads.filter(
     (lead) => lead.fuente === "WhatsApp" || lead.fuente === "Orgánico Social"
   ).length;
+
+  const perdidos = captura.totalMeta - captura.totalBitrix;
+  const tasaCaptura =
+    captura.totalMeta > 0 ? ((captura.totalBitrix / captura.totalMeta) * 100).toFixed(1) : "0";
+
+  const totalLeads = leads.length;
+  const porEtapa = {};
+  leads.forEach((lead) => {
+    porEtapa[lead.etapa] = (porEtapa[lead.etapa] || 0) + 1;
+  });
+
+  const leadsMostrados = filtroEtapa ? leads.filter((lead) => lead.etapa === filtroEtapa) : leads;
 
   return (
     <div className="flex flex-col gap-4 p-6">
@@ -168,6 +219,48 @@ export default function LiveFeed() {
         <SummaryPill label="Otros" value={otrosCount} />
       </div>
 
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <SummaryPill label="Leads Meta" value={<span className="text-blue-600">{captura.totalMeta}</span>} />
+        <SummaryPill label="En Bitrix" value={captura.totalBitrix} />
+        <SummaryPill
+          label="Tasa captura"
+          value={<span style={{ color: colorTasaCaptura(tasaCaptura) }}>{tasaCaptura}%</span>}
+        />
+        <SummaryPill
+          label="Perdidos"
+          value={<span className={perdidos > 0 ? "text-red-600" : "text-gray-900"}>{perdidos}</span>}
+        />
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+        {Object.entries(porEtapa)
+          .sort((a, b) => b[1] - a[1])
+          .map(([etapa, count]) => {
+            const pct = ((count / totalLeads) * 100).toFixed(0);
+            return (
+              <div
+                key={etapa}
+                style={{
+                  background: "#f1f5f9",
+                  borderRadius: 20,
+                  padding: "4px 12px",
+                  fontSize: 13,
+                  display: "flex",
+                  gap: 6,
+                  alignItems: "center",
+                  cursor: "pointer",
+                  border: filtroEtapa === etapa ? "2px solid #6366f1" : "2px solid transparent",
+                }}
+                onClick={() => setFiltroEtapa(filtroEtapa === etapa ? null : etapa)}
+              >
+                <span style={{ fontWeight: 600 }}>{etapa}</span>
+                <span style={{ color: "#6366f1", fontWeight: 700 }}>{count}</span>
+                <span style={{ color: "#94a3b8" }}>{pct}%</span>
+              </div>
+            );
+          })}
+      </div>
+
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
         <table className="w-full text-left text-sm">
           <thead>
@@ -185,7 +278,7 @@ export default function LiveFeed() {
             <SkeletonRows />
           ) : (
             <tbody>
-              {leads.map((lead) => {
+              {leadsMostrados.map((lead) => {
                 const asesorInfo = asesorPorId(lead.asesorId);
                 return (
                   <tr key={lead.id} className="border-b border-gray-100 last:border-0">
@@ -223,9 +316,9 @@ export default function LiveFeed() {
           )}
         </table>
 
-        {!loading && !error && total === 0 && (
+        {!loading && !error && leadsMostrados.length === 0 && (
           <div className="px-4 py-10 text-center text-sm text-gray-500">
-            Sin leads en este período
+            {filtroEtapa ? "Sin leads en esta etapa" : "Sin leads en este período"}
           </div>
         )}
 
