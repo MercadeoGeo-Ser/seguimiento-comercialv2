@@ -16,6 +16,13 @@ function SummaryCard({ label, value }) {
   );
 }
 
+function colorTasaCaptura(tasa) {
+  const valor = parseFloat(tasa);
+  if (valor >= 90) return "#16a34a";
+  if (valor >= 70) return "#d97706";
+  return "#dc2626";
+}
+
 function SkeletonRows() {
   return (
     <tbody>
@@ -45,21 +52,57 @@ export default function Resumen() {
   useEffect(() => {
     let cancelado = false;
 
-    async function cargarCaptura() {
+    async function cargar() {
+      setLoading(true);
+      setError(null);
+
       try {
-        const [leadsRes, metaRes] = await Promise.all([
-          fetch(`/api/leads?range=${range}`),
-          fetch(`/api/meta?range=${range}`),
+        const [perfData, metaData] = await Promise.all([
+          fetch(`/api/perf?range=${range}`).then((r) => r.json()),
+          fetch(`/api/meta?range=${range}`).then((r) => r.json()),
         ]);
-        const leadsJson = await leadsRes.json();
-        const metaJson = await metaRes.json();
         if (cancelado) return;
 
-        if (leadsJson.ok && metaJson.ok) {
-          const leads = leadsJson.leads || [];
-          const totalBitrix = leads.filter((l) => l.fuente === "Meta Ads").length;
-          setCaptura({ totalMeta: metaJson.totalMeta || 0, totalBitrix });
+        if (!perfData.ok) {
+          setError(perfData.error || "Error al cargar el resumen");
+          setAsesores([]);
+        } else {
+          setAsesores(perfData.asesores);
+          setTotales(perfData.totales);
+        }
 
+        setCaptura({
+          totalMeta: metaData.totalMeta || 0,
+          totalBitrix: perfData.totales?.metaAds || 0,
+        });
+      } catch (err) {
+        if (!cancelado) {
+          setError(err.message);
+          setAsesores([]);
+          setCaptura({ totalMeta: 0, totalBitrix: 0 });
+        }
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    }
+
+    cargar();
+    return () => {
+      cancelado = true;
+    };
+  }, [range]);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarEtapas() {
+      try {
+        const response = await fetch(`/api/leads?range=${range}`);
+        const data = await response.json();
+        if (cancelado) return;
+
+        if (data.ok) {
+          const leads = data.leads || [];
           const etapas = {};
           leads.forEach((l) => {
             etapas[l.etapa] = (etapas[l.etapa] || 0) + 1;
@@ -69,49 +112,13 @@ export default function Resumen() {
         }
       } catch {
         if (!cancelado) {
-          setCaptura({ totalMeta: 0, totalBitrix: 0 });
           setPorEtapa({});
           setTotalLeads(0);
         }
       }
     }
 
-    cargarCaptura();
-    return () => {
-      cancelado = true;
-    };
-  }, [range]);
-
-  useEffect(() => {
-    let cancelado = false;
-
-    async function cargar() {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch(`/api/perf?range=${range}`);
-        const data = await response.json();
-        if (cancelado) return;
-
-        if (!data.ok) {
-          setError(data.error || "Error al cargar el resumen");
-          setAsesores([]);
-        } else {
-          setAsesores(data.asesores);
-          setTotales(data.totales);
-        }
-      } catch (err) {
-        if (!cancelado) {
-          setError(err.message);
-          setAsesores([]);
-        }
-      } finally {
-        if (!cancelado) setLoading(false);
-      }
-    }
-
-    cargar();
+    cargarEtapas();
     return () => {
       cancelado = true;
     };
@@ -138,29 +145,19 @@ export default function Resumen() {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <SummaryCard label="Total Leads" value={totales.totalLeads} />
-        <SummaryCard label="Meta Ads" value={totales.metaAds} />
+        <SummaryCard label="Leads Meta" value={<span className="text-blue-600">{captura.totalMeta}</span>} />
+        <SummaryCard label="En Bitrix" value={captura.totalBitrix} />
+        <SummaryCard
+          label="Tasa Captura"
+          value={<span style={{ color: colorTasaCaptura(tasaCaptura) }}>{tasaCaptura}%</span>}
+        />
+        <SummaryCard
+          label="Perdidos"
+          value={<span className={perdidos > 0 ? "text-red-600" : "text-gray-900"}>{perdidos}</span>}
+        />
         <SummaryCard label="Ganados" value={totales.ganados} />
         <SummaryCard label="Conversión" value={`${totales.conversion}%`} />
       </div>
-
-      {perdidos > 0 && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 16, marginBottom: 24 }}>
-          <div style={{ fontWeight: 600, color: "#dc2626", marginBottom: 4 }}>
-            ⚠️ {perdidos} leads de Meta no registrados en Bitrix
-          </div>
-          <div style={{ fontSize: 13, color: "#6b7280" }}>
-            Meta: {captura.totalMeta} · Bitrix: {captura.totalBitrix} · Tasa de captura:{" "}
-            <strong
-              style={{
-                color: tasaCaptura >= 90 ? "#16a34a" : tasaCaptura >= 70 ? "#d97706" : "#dc2626",
-              }}
-            >
-              {tasaCaptura}%
-            </strong>
-          </div>
-        </div>
-      )}
 
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>

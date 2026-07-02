@@ -35,6 +35,15 @@ const COLOR_POR_GRUPO = {
   perdido: "bg-red-500",
 };
 
+function SummaryCard({ label, value }) {
+  return (
+    <div className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-3">
+      <div className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="mt-1 text-2xl font-semibold text-gray-900">{value}</div>
+    </div>
+  );
+}
+
 function FunnelRow({ etapa, ancho }) {
   const grupo = GRUPO_POR_ETAPA[etapa.codigo] || "medio";
   return (
@@ -77,6 +86,7 @@ function SkeletonFunnel() {
 export default function Embudo() {
   const [range, setRange] = useState("today");
   const [etapas, setEtapas] = useState([]);
+  const [totalEntradas, setTotalEntradas] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -95,13 +105,16 @@ export default function Embudo() {
         if (!data.ok) {
           setError(data.error || "Error al cargar el embudo");
           setEtapas([]);
+          setTotalEntradas(0);
         } else {
           setEtapas(data.etapas);
+          setTotalEntradas(data.totalEntradas || 0);
         }
       } catch (err) {
         if (!cancelado) {
           setError(err.message);
           setEtapas([]);
+          setTotalEntradas(0);
         }
       } finally {
         if (!cancelado) setLoading(false);
@@ -118,6 +131,13 @@ export default function Embudo() {
   const etapaPerdido = etapas.find((e) => e.codigo === "C49:LOSE");
   const maxDeals = etapasVisibles.length > 0 ? Math.max(...etapasVisibles.map((e) => e.total)) : 0;
   const anchoDe = (total) => (maxDeals > 0 ? (total / maxDeals) * 85 + 15 : 15);
+
+  const cotizacionTotal = etapas.find((e) => e.codigo === "C49:UC_5M8VT8")?.total || 0;
+  const cotizacionPct =
+    totalEntradas > 0 ? ((cotizacionTotal / totalEntradas) * 100).toFixed(1) : "0";
+  const ganadosTotal = etapas.find((e) => e.codigo === "C49:WON")?.total || 0;
+  const tasaConversion =
+    totalEntradas > 0 ? ((ganadosTotal / totalEntradas) * 100).toFixed(1) : "0";
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -152,6 +172,15 @@ export default function Embudo() {
       {!loading && !error && etapaPerdido && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-6">
           <FunnelRow etapa={etapaPerdido} ancho={anchoDe(etapaPerdido.total)} />
+        </div>
+      )}
+
+      {!loading && !error && (
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <SummaryCard label="Total entradas" value={totalEntradas} />
+          <SummaryCard label="Llegaron a cotización" value={`${cotizacionTotal} · ${cotizacionPct}%`} />
+          <SummaryCard label="Ganados" value={ganadosTotal} />
+          <SummaryCard label="Tasa conversión" value={`${tasaConversion}%`} />
         </div>
       )}
     </div>
