@@ -10,10 +10,20 @@ const FIELDS = [
 
 function normalizarFecha(raw) {
   if (!raw) return new Date().toISOString();
-  return `${raw.slice(0, 10)}T12:00:00.000Z`;
+  // Convertir directamente — new Date() parsea el offset +03:00 correctamente
+  return new Date(raw).toISOString();
 }
 
 function fechaColombia(iso) {
+  return new Date(iso).toLocaleString('es-CO', {
+    timeZone: 'America/Bogota',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
+// Clave YYYY-MM-DD (día Colombia) usada solo para calcular rangos de fecha
+function claveFechaColombia(iso) {
   return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
 }
 
@@ -27,7 +37,7 @@ function clasificarFuente(deal) {
 }
 
 function getRango(range) {
-  const hoy = fechaColombia(new Date().toISOString());
+  const hoy = claveFechaColombia(new Date().toISOString());
   const shift = (str, n) => {
     const [y, m, d] = str.split('-').map(Number);
     return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
@@ -145,7 +155,7 @@ export default async function handler(req, res) {
         formulario: deal.UF_CRM_1769101707140 || null,
         fuente: clasificarFuente(deal),
         fechaCreacion,
-        fechaColombia: fechaColombia(fechaCreacion),
+        fechaDisplay: fechaColombia(fechaCreacion),
       };
     });
 

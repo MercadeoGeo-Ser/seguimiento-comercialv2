@@ -25,14 +25,14 @@ const FUENTE_BADGE = {
 
 const PRIMERA_ETAPA = "C49:NEW";
 
-function tiempoRelativo(fechaColombia) {
-  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
-  const [y1, m1, d1] = fechaColombia.split("-").map(Number);
-  const [y2, m2, d2] = hoy.split("-").map(Number);
-  const diffDias = Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000);
-  if (diffDias <= 0) return "Hoy";
-  if (diffDias === 1) return "Ayer";
-  return `hace ${diffDias} días`;
+function tiempoRelativo(isoString) {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60000);
+  const horas = Math.floor(diff / 3600000);
+  const dias = Math.floor(diff / 86400000);
+  if (mins < 60) return `hace ${mins} min`;
+  if (horas < 24) return `hace ${horas} h`;
+  return `hace ${dias} día${dias > 1 ? "s" : ""}`;
 }
 
 function asesorPorId(id) {
@@ -213,7 +213,9 @@ export default function LiveFeed() {
                         <span className="text-gray-700">{lead.asesor || "Sin asignar"}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{tiempoRelativo(lead.fechaColombia)}</td>
+                    <td className="px-4 py-3 text-gray-500" title={lead.fechaDisplay}>
+                      {tiempoRelativo(lead.fechaCreacion)}
+                    </td>
                     <td className="px-4 py-3 text-gray-700">{lead.etapa}</td>
                   </tr>
                 );
