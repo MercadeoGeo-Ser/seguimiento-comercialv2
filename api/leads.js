@@ -75,6 +75,30 @@ async function fetchDeals(filter) {
 }
 
 export default async function handler(req, res) {
+  if (req.query.debug === "1") {
+    try {
+      const body = new URLSearchParams();
+      body.append("filter[CATEGORY_ID]", "49");
+      body.append("select[0]", "ID");
+      body.append("select[1]", "DATE_CREATE");
+      body.append("select[2]", "ASSIGNED_BY_ID");
+      body.append("select[3]", "SOURCE_ID");
+      body.append("select[4]", "TRACE");
+      body.append("select[5]", "UF_CRM_1769101707140");
+      body.append("start", "0");
+
+      const response = await fetch(`${process.env.BITRIX_REST_URL}/crm.deal.list.json`, {
+        method: "POST",
+        body,
+      });
+      const json = await response.json();
+      res.status(200).json({ raw: json.result?.slice(0, 5), total: json.total });
+    } catch (error) {
+      res.status(500).json({ ok: false, error: error.message });
+    }
+    return;
+  }
+
   try {
     const { range, asesor, fuente } = req.query;
     const { from, to } = getRango(range);
