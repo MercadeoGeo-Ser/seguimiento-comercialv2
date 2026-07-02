@@ -142,6 +142,7 @@ export default async function handler(req, res) {
         asesor: nombreAsesor(deal.ASSIGNED_BY_ID),
         etapa: deal.STAGE_ID,
         oportunidad: deal.OPPORTUNITY,
+        formulario: deal.UF_CRM_1769101707140 || null,
         fuente: clasificarFuente(deal),
         fechaCreacion,
         fechaColombia: fechaColombia(fechaCreacion),
