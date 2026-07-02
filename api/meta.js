@@ -1,6 +1,6 @@
 import { getRango } from "./_lib/bitrix.js";
 
-const GRAPH_URL = "https://graph.facebook.com/v21.0";
+const GRAPH_URL = "https://graph.facebook.com/v25.0";
 const PAGE_ID = "378061358891359";
 
 function rangoTimestamps(range) {
@@ -35,14 +35,31 @@ async function fetchAllMeta(url) {
   return results;
 }
 
+async function obtenerPageToken(userToken) {
+  const response = await fetch(`${GRAPH_URL}/me/accounts?access_token=${userToken}`);
+  const json = await response.json();
+
+  if (json.error) {
+    throw new Error(json.error.message || "Error de Meta Graph API");
+  }
+
+  const page = json.data?.find((p) => p.id === PAGE_ID);
+  return page ? page.access_token : null;
+}
+
 export default async function handler(req, res) {
   try {
     const { range } = req.query;
     const { sinceTs, untilTs } = rangoTimestamps(range);
-    const TOKEN = process.env.META_ACCESS_TOKEN;
+    const USER_TOKEN = process.env.META_ACCESS_TOKEN;
+
+    const PAGE_TOKEN = await obtenerPageToken(USER_TOKEN);
+    if (!PAGE_TOKEN) {
+      return res.status(400).json({ ok: false, error: "Página no encontrada" });
+    }
 
     const forms = await fetchAllMeta(
-      `${GRAPH_URL}/${PAGE_ID}/leadgen_forms?fields=id,name,leads_count&access_token=${TOKEN}`
+      `${GRAPH_URL}/${PAGE_ID}/leadgen_forms?fields=id,name,leads_count&access_token=${PAGE_TOKEN}`
     );
 
     const filtering = JSON.stringify([
@@ -55,7 +72,7 @@ export default async function handler(req, res) {
 
     for (const form of forms) {
       const leads = await fetchAllMeta(
-        `${GRAPH_URL}/${form.id}/leads?fields=created_time&filtering=${encodeURIComponent(filtering)}&limit=500&access_token=${TOKEN}`
+        `${GRAPH_URL}/${form.id}/leads?fields=created_time&filtering=${encodeURIComponent(filtering)}&limit=500&access_token=${PAGE_TOKEN}`
       );
       porFormulario.push({ nombre: form.name, leads: leads.length });
       totalMeta += leads.length;
