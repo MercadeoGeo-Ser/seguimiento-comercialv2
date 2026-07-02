@@ -114,6 +114,19 @@ async function fetchDeals(filter) {
 }
 
 export default async function handler(req, res) {
+  if (req.query.debug === "stages") {
+    try {
+      const response = await fetch(
+        `${process.env.BITRIX_REST_URL}/crm.dealcategory.stage.list.json?id=49`
+      );
+      const json = await response.json();
+      res.status(200).json(json);
+    } catch (error) {
+      res.status(500).json({ ok: false, error: error.message });
+    }
+    return;
+  }
+
   if (req.query.debug === "1") {
     try {
       const body = new URLSearchParams();
