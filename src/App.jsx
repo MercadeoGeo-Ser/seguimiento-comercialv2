@@ -1,5 +1,6 @@
 import { useState } from "react";
 import LiveFeed from "./tabs/LiveFeed.jsx";
+import Resumen from "./tabs/Resumen.jsx";
 
 const TABS = [
   { id: "live-feed", label: "Live Feed" },
@@ -38,6 +39,7 @@ export default function App() {
       </aside>
       <main className="flex-1 overflow-y-auto">
         {activeTab === "live-feed" && <LiveFeed />}
+        {activeTab === "resumen" && <Resumen />}
       </main>
     </div>
   );
