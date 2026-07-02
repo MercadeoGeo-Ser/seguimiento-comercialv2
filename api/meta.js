@@ -47,6 +47,27 @@ async function obtenerPageToken(userToken) {
   return page ? page.access_token : null;
 }
 
+async function getAllForms(pageToken, pageId) {
+  return fetchAllMeta(
+    `${GRAPH_URL}/${pageId}/leadgen_forms?fields=id,name,leads_count&access_token=${pageToken}`
+  );
+}
+
+async function contarLeads(formId, sinceTs, untilTs, pageToken) {
+  const filtering = JSON.stringify([
+    { field: "time_created", operator: "GREATER_THAN", value: sinceTs },
+    { field: "time_created", operator: "LESS_THAN", value: untilTs },
+  ]);
+
+  const leads = await fetchAllMeta(
+    `${GRAPH_URL}/${formId}/leads?fields=created_time&filtering=${encodeURIComponent(filtering)}&limit=500&access_token=${pageToken}`
+  );
+
+  return leads.length;
+}
+
+const BATCH = 5;
+
 export default async function handler(req, res) {
   try {
     const { range } = req.query;
@@ -58,30 +79,27 @@ export default async function handler(req, res) {
       return res.status(400).json({ ok: false, error: "Página no encontrada" });
     }
 
-    const forms = await fetchAllMeta(
-      `${GRAPH_URL}/${PAGE_ID}/leadgen_forms?fields=id,name,leads_count&access_token=${PAGE_TOKEN}`
-    );
+    const forms = await getAllForms(PAGE_TOKEN, PAGE_ID);
+    const formsActivos = forms.filter((f) => (f.leads_count || 0) > 0);
 
-    const filtering = JSON.stringify([
-      { field: "time_created", operator: "GREATER_THAN", value: sinceTs },
-      { field: "time_created", operator: "LESS_THAN", value: untilTs },
-    ]);
-
+    const resultados = [];
     let totalMeta = 0;
-    const porFormulario = [];
 
-    for (const form of forms) {
-      const leads = await fetchAllMeta(
-        `${GRAPH_URL}/${form.id}/leads?fields=created_time&filtering=${encodeURIComponent(filtering)}&limit=500&access_token=${PAGE_TOKEN}`
+    for (let i = 0; i < formsActivos.length; i += BATCH) {
+      const lote = formsActivos.slice(i, i + BATCH);
+      const counts = await Promise.all(
+        lote.map((f) => contarLeads(f.id, sinceTs, untilTs, PAGE_TOKEN))
       );
-      porFormulario.push({ nombre: form.name, leads: leads.length });
-      totalMeta += leads.length;
+      counts.forEach((count, j) => {
+        totalMeta += count;
+        if (count > 0) resultados.push({ nombre: lote[j].name, leads: count });
+      });
     }
 
     res.status(200).json({
       ok: true,
       totalMeta,
-      porFormulario: porFormulario.filter((f) => f.leads > 0),
+      porFormulario: resultados.filter((f) => f.leads > 0),
       fechaConsulta: new Date().toISOString(),
     });
   } catch (error) {
