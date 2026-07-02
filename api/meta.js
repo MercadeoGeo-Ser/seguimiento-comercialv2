@@ -67,12 +67,15 @@ async function contarLeads(formId, sinceTs, untilTs, pageToken) {
   return leads.length;
 }
 
-async function obtenerCampanasWhatsapp(pageToken) {
+async function obtenerCampanasWhatsapp(pageToken, range) {
+  const { from: desde, to: hasta } = getRango(range);
+  const timeRange = encodeURIComponent(JSON.stringify({ since: desde, until: hasta }));
+
   const filtering = JSON.stringify([
     { field: "objective", operator: "IN", value: ["MESSAGES", "OUTCOME_ENGAGEMENT"] },
   ]);
 
-  const url = `${GRAPH_URL}/${AD_ACCOUNT_ID}/campaigns?fields=name,objective,insights{spend,impressions,actions}&filtering=${encodeURIComponent(filtering)}&access_token=${pageToken}`;
+  const url = `${GRAPH_URL}/${AD_ACCOUNT_ID}/campaigns?fields=name,objective,insights.time_range(${timeRange}){spend,impressions,actions}&filtering=${encodeURIComponent(filtering)}&access_token=${pageToken}`;
 
   const response = await fetch(url);
   const json = await response.json();
@@ -132,7 +135,7 @@ export default async function handler(req, res) {
     }
 
     if (tipo === "whatsapp") {
-      const resultado = await obtenerCampanasWhatsapp(PAGE_TOKEN);
+      const resultado = await obtenerCampanasWhatsapp(PAGE_TOKEN, range);
       cache[cacheKey] = { data: resultado, ts: ahora };
       return res.status(200).json(resultado);
     }

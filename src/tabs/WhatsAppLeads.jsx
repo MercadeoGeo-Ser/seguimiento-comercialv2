@@ -39,6 +39,7 @@ export default function WhatsAppLeads() {
   const [leads, setLeads] = useState([]);
   const [campanas, setCampanas] = useState([]);
   const [totalGasto, setTotalGasto] = useState("0.00");
+  const [totalMensajes, setTotalMensajes] = useState(0);
   const [costoPorMensaje, setCostoPorMensaje] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,6 +66,7 @@ export default function WhatsAppLeads() {
         setLeads(leadsData.leads);
         setCampanas(metaData.campanas);
         setTotalGasto(metaData.totalGasto);
+        setTotalMensajes(metaData.totalMensajes);
         setCostoPorMensaje(metaData.costoPorMensaje);
       } catch (err) {
         if (!cancelado) {
@@ -72,6 +74,7 @@ export default function WhatsAppLeads() {
           setLeads([]);
           setCampanas([]);
           setTotalGasto("0.00");
+          setTotalMensajes(0);
           setCostoPorMensaje(0);
         }
       } finally {
@@ -117,6 +120,15 @@ export default function WhatsAppLeads() {
       )}
 
       <div className="flex flex-col gap-2">
+        <h3 className="text-sm font-semibold text-gray-700">Reconciliación Meta → Bitrix</h3>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <SummaryCard label="Conversaciones Meta" value={totalMensajes} />
+          <SummaryCard label="Deals en Bitrix" value={leads.length} />
+          <SummaryCard label="Sin convertir" value={totalMensajes - leads.length} />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
         <h3 className="text-sm font-semibold text-gray-700">Deals WhatsApp en Bitrix</h3>
         <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
           <table className="w-full text-left text-sm">
@@ -158,14 +170,16 @@ export default function WhatsAppLeads() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
-                <th className="px-4 py-3">Nombre campaña</th>
-                <th className="px-4 py-3">Gasto</th>
+                <th className="px-4 py-3">Nombre</th>
+                <th className="px-4 py-3">Gasto período</th>
                 <th className="px-4 py-3">Impresiones</th>
-                <th className="px-4 py-3">Mensajes iniciados</th>
+                <th className="px-4 py-3">Conversaciones iniciadas</th>
+                <th className="px-4 py-3">Deals creados en Bitrix</th>
+                <th className="px-4 py-3">Costo por conversación</th>
               </tr>
             </thead>
             {loading ? (
-              <SkeletonRows cols={4} />
+              <SkeletonRows cols={6} />
             ) : (
               <tbody>
                 {campanas.map((c) => (
@@ -174,6 +188,10 @@ export default function WhatsAppLeads() {
                     <td className="px-4 py-3 text-gray-700">${c.gasto.toFixed(2)}</td>
                     <td className="px-4 py-3 text-gray-700">{c.impresiones}</td>
                     <td className="px-4 py-3 text-gray-700">{c.mensajes}</td>
+                    <td className="px-4 py-3 text-gray-400">—</td>
+                    <td className="px-4 py-3 text-gray-700">
+                      ${c.mensajes > 0 ? (c.gasto / c.mensajes).toFixed(2) : "0.00"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -186,6 +204,13 @@ export default function WhatsAppLeads() {
             </div>
           )}
         </div>
+        {!loading && campanas.length > 0 && (
+          <p className="text-xs text-gray-400">
+            "Deals creados en Bitrix" por campaña no está disponible: Bitrix no guarda un campo que
+            relacione cada deal de WhatsApp con la campaña de Meta que lo originó. La comparación
+            agregada (Meta vs Bitrix) sí está arriba, en "Reconciliación Meta → Bitrix".
+          </p>
+        )}
       </div>
     </div>
   );
