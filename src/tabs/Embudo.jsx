@@ -35,15 +35,7 @@ const COLOR_POR_GRUPO = {
   perdido: "bg-red-500",
 };
 
-const ANCHO_MIN = 15;
-const ANCHO_MAX = 100;
-
-function anchoBarra(porcentaje) {
-  const valor = parseFloat(porcentaje) || 0;
-  return Math.min(ANCHO_MAX, Math.max(ANCHO_MIN, valor));
-}
-
-function FunnelRow({ etapa }) {
+function FunnelRow({ etapa, ancho }) {
   const grupo = GRUPO_POR_ETAPA[etapa.codigo] || "medio";
   return (
     <div className="flex items-center gap-4">
@@ -53,7 +45,7 @@ function FunnelRow({ etapa }) {
       <div className="flex flex-1 justify-center">
         <div
           className={`h-10 rounded ${COLOR_POR_GRUPO[grupo]}`}
-          style={{ width: `${anchoBarra(etapa.porcentaje)}%` }}
+          style={{ width: `${ancho}%` }}
         />
       </div>
       <div className="w-64 shrink-0 text-sm text-gray-700">
@@ -122,8 +114,10 @@ export default function Embudo() {
     };
   }, [range]);
 
-  const etapasPrincipales = etapas.filter((e) => e.codigo !== "C49:LOSE");
+  const etapasVisibles = etapas.filter((e) => e.total > 0 && e.codigo !== "C49:LOSE");
   const etapaPerdido = etapas.find((e) => e.codigo === "C49:LOSE");
+  const maxDeals = etapasVisibles.length > 0 ? Math.max(...etapasVisibles.map((e) => e.total)) : 0;
+  const anchoDe = (total) => (maxDeals > 0 ? (total / maxDeals) * 85 + 15 : 15);
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -148,8 +142,8 @@ export default function Embudo() {
           <div className="py-10 text-center text-sm text-red-600">{error}</div>
         ) : (
           <div className="flex flex-col gap-3">
-            {etapasPrincipales.map((etapa) => (
-              <FunnelRow key={etapa.codigo} etapa={etapa} />
+            {etapasVisibles.map((etapa) => (
+              <FunnelRow key={etapa.codigo} etapa={etapa} ancho={anchoDe(etapa.total)} />
             ))}
           </div>
         )}
@@ -157,7 +151,7 @@ export default function Embudo() {
 
       {!loading && !error && etapaPerdido && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-6">
-          <FunnelRow etapa={etapaPerdido} />
+          <FunnelRow etapa={etapaPerdido} ancho={anchoDe(etapaPerdido.total)} />
         </div>
       )}
     </div>
