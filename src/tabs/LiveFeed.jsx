@@ -76,7 +76,6 @@ export default function LiveFeed() {
   const [asesor, setAsesor] = useState("");
   const [fuente, setFuente] = useState("");
   const [leads, setLeads] = useState([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filtroEtapa, setFiltroEtapa] = useState(null);
@@ -131,16 +130,13 @@ export default function LiveFeed() {
         if (!data.ok) {
           setError(data.error || "Error al cargar los leads");
           setLeads([]);
-          setTotal(0);
         } else {
           setLeads(data.leads);
-          setTotal(data.total);
         }
       } catch (err) {
         if (!cancelado) {
           setError(err.message);
           setLeads([]);
-          setTotal(0);
         }
       } finally {
         if (!cancelado) setLoading(false);
@@ -153,7 +149,6 @@ export default function LiveFeed() {
     };
   }, [range, asesor, fuente]);
 
-  const metaAdsCount = leads.filter((lead) => lead.fuente === "Meta Ads").length;
   const sinGestionarCount = leads.filter((lead) => lead.etapaRaw === PRIMERA_ETAPA_RAW).length;
   const otrosCount = leads.filter(
     (lead) => lead.fuente === "WhatsApp" || lead.fuente === "Orgánico Social"
@@ -213,13 +208,6 @@ export default function LiveFeed() {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <SummaryPill label="Total leads" value={total} />
-        <SummaryPill label="Meta Ads" value={metaAdsCount} />
-        <SummaryPill label="Sin gestionar" value={sinGestionarCount} />
-        <SummaryPill label="Otros" value={otrosCount} />
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row">
         <SummaryPill label="Leads Meta" value={<span className="text-blue-600">{captura.totalMeta}</span>} />
         <SummaryPill label="En Bitrix" value={captura.totalBitrix} />
         <SummaryPill
@@ -230,6 +218,8 @@ export default function LiveFeed() {
           label="Perdidos"
           value={<span className={perdidos > 0 ? "text-red-600" : "text-gray-900"}>{perdidos}</span>}
         />
+        <SummaryPill label="Sin gestionar" value={sinGestionarCount} />
+        <SummaryPill label="Otros" value={otrosCount} />
       </div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
