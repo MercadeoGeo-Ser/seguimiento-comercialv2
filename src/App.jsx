@@ -2,6 +2,7 @@ import { useState } from "react";
 import LiveFeed from "./tabs/LiveFeed.jsx";
 import Resumen from "./tabs/Resumen.jsx";
 import Embudo from "./tabs/Embudo.jsx";
+import Rendimiento from "./tabs/Rendimiento.jsx";
 
 const TABS = [
   { id: "live-feed", label: "Live Feed" },
@@ -42,6 +43,7 @@ export default function App() {
         {activeTab === "live-feed" && <LiveFeed />}
         {activeTab === "resumen" && <Resumen />}
         {activeTab === "embudo" && <Embudo />}
+        {activeTab === "rendimiento" && <Rendimiento />}
       </main>
     </div>
   );
