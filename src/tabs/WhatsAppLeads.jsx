@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ASESORES } from "../constants.js";
 
 const RANGOS = [
   { value: "today", label: "Hoy" },
@@ -9,23 +10,27 @@ const RANGOS = [
 
 const PRIMERA_ETAPA_RAW = "C49:NEW";
 
-function SummaryCard({ label, value }) {
-  return (
-    <div className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold text-gray-900">{value}</div>
-    </div>
-  );
+const colorEtapa = (etapa) => {
+  if (etapa === "Contacto inicial") return { bg: "#ede9fe", color: "#6d28d9" };
+  if (etapa === "No contesta") return { bg: "#fef9c3", color: "#854d0e" };
+  if (etapa.includes("cotización") || etapa.includes("Cotización")) return { bg: "#dbeafe", color: "#1d4ed8" };
+  if (etapa.includes("Ganado")) return { bg: "#dcfce7", color: "#16a34a" };
+  if (etapa.includes("Perdido")) return { bg: "#fef2f2", color: "#dc2626" };
+  return { bg: "#f1f5f9", color: "#64748b" };
+};
+
+function asesorPorId(id) {
+  return ASESORES.find((a) => a.id === id);
 }
 
 function SkeletonRows({ cols }) {
   return (
     <tbody>
       {Array.from({ length: 4 }).map((_, i) => (
-        <tr key={i} className="border-b border-gray-100">
+        <tr key={i}>
           {Array.from({ length: cols }).map((__, j) => (
-            <td key={j} className="px-4 py-3">
-              <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
+            <td key={j} style={{ padding: "14px 16px" }}>
+              <div className="skeleton" style={{ height: 16, width: "100%" }} />
             </td>
           ))}
         </tr>
@@ -91,7 +96,7 @@ export default function WhatsAppLeads() {
   const sinGestionar = leads.filter((lead) => lead.etapaRaw === PRIMERA_ETAPA_RAW).length;
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-3">
         <select
           value={range}
@@ -106,11 +111,23 @@ export default function WhatsAppLeads() {
         </select>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <SummaryCard label="Deals WhatsApp" value={leads.length} />
-        <SummaryCard label="Sin gestionar" value={sinGestionar} />
-        <SummaryCard label="Gasto en campañas" value={`$${totalGasto}`} />
-        <SummaryCard label="Costo por conversación" value={`$${costoPorMensaje}`} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+        <div className="metric-card" style={{ borderLeftColor: "#16a34a" }}>
+          <div className="metric-label">Deals WhatsApp</div>
+          <div className="metric-value">{leads.length}</div>
+        </div>
+        <div className="metric-card" style={{ borderLeftColor: "#f59e0b" }}>
+          <div className="metric-label">Sin Gestionar</div>
+          <div className="metric-value">{sinGestionar}</div>
+        </div>
+        <div className="metric-card" style={{ borderLeftColor: "#6366f1" }}>
+          <div className="metric-label">Gasto Campañas</div>
+          <div className="metric-value">${totalGasto}</div>
+        </div>
+        <div className="metric-card" style={{ borderLeftColor: "#0ea5e9" }}>
+          <div className="metric-label">Costo por Conversación</div>
+          <div className="metric-value">${costoPorMensaje}</div>
+        </div>
       </div>
 
       {error && !loading && (
@@ -121,95 +138,116 @@ export default function WhatsAppLeads() {
 
       <div className="flex flex-col gap-2">
         <h3 className="text-sm font-semibold text-gray-700">Reconciliación Meta → Bitrix</h3>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <SummaryCard label="Conversaciones Meta" value={totalMensajes} />
-          <SummaryCard label="Deals en Bitrix" value={leads.length} />
-          <SummaryCard label="Sin convertir" value={totalMensajes - leads.length} />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+          <div className="metric-card" style={{ borderLeftColor: "#6366f1" }}>
+            <div className="metric-label">Conversaciones Meta</div>
+            <div className="metric-value">{totalMensajes}</div>
+          </div>
+          <div className="metric-card" style={{ borderLeftColor: "#0ea5e9" }}>
+            <div className="metric-label">Deals en Bitrix</div>
+            <div className="metric-value">{leads.length}</div>
+          </div>
+          <div className="metric-card" style={{ borderLeftColor: "#ef4444" }}>
+            <div className="metric-label">Sin convertir</div>
+            <div className="metric-value">{totalMensajes - leads.length}</div>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-semibold text-gray-700">Deals WhatsApp en Bitrix</h3>
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Asesor</th>
-                <th className="px-4 py-3">Etapa</th>
-                <th className="px-4 py-3">Fecha</th>
-              </tr>
-            </thead>
-            {loading ? (
-              <SkeletonRows cols={4} />
-            ) : (
-              <tbody>
-                {leads.map((lead) => (
-                  <tr key={lead.id} className="border-b border-gray-100 last:border-0">
-                    <td className="px-4 py-3 text-gray-700">{lead.cliente}</td>
-                    <td className="px-4 py-3 text-gray-700">{lead.asesor || "Sin asignar"}</td>
-                    <td className="px-4 py-3 text-gray-700">{lead.etapa}</td>
-                    <td className="px-4 py-3 text-gray-500">{lead.fechaDisplay}</td>
-                  </tr>
-                ))}
-              </tbody>
-            )}
-          </table>
-
-          {!loading && !error && leads.length === 0 && (
-            <div className="px-4 py-10 text-center text-sm text-gray-500">
-              Sin leads de WhatsApp en este período
-            </div>
-          )}
+      <div className="card">
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 16 }}>
+          Deals WhatsApp en Bitrix
         </div>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-semibold text-gray-700">Campañas Meta (mensajes)</h3>
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
-                <th className="px-4 py-3">Nombre</th>
-                <th className="px-4 py-3">Gasto período</th>
-                <th className="px-4 py-3">Impresiones</th>
-                <th className="px-4 py-3">Conversaciones iniciadas</th>
-                <th className="px-4 py-3">Deals creados en Bitrix</th>
-                <th className="px-4 py-3">Costo por conversación</th>
-              </tr>
-            </thead>
-            {loading ? (
-              <SkeletonRows cols={6} />
-            ) : (
-              <tbody>
-                {campanas.map((c) => (
-                  <tr key={c.nombre} className="border-b border-gray-100 last:border-0">
-                    <td className="px-4 py-3 text-gray-700">{c.nombre}</td>
-                    <td className="px-4 py-3 text-gray-700">${c.gasto.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-gray-700">{c.impresiones}</td>
-                    <td className="px-4 py-3 text-gray-700">{c.mensajes}</td>
-                    <td className="px-4 py-3 text-gray-400">—</td>
-                    <td className="px-4 py-3 text-gray-700">
-                      ${c.mensajes > 0 ? (c.gasto / c.mensajes).toFixed(2) : "0.00"}
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Asesor</th>
+              <th>Etapa</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          {loading ? (
+            <SkeletonRows cols={4} />
+          ) : (
+            <tbody>
+              {leads.map((lead) => {
+                const asesorInfo = asesorPorId(lead.asesorId);
+                const badge = colorEtapa(lead.etapa);
+                return (
+                  <tr key={lead.id}>
+                    <td>{lead.cliente}</td>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span
+                          className="avatar"
+                          style={{ backgroundColor: asesorInfo?.color || "#9ca3af", width: 28, height: 28, fontSize: 12 }}
+                        >
+                          {lead.asesor ? lead.asesor.charAt(0).toUpperCase() : "?"}
+                        </span>
+                        <span>{lead.asesor || "Sin asignar"}</span>
+                      </div>
                     </td>
+                    <td>
+                      <span className="badge" style={{ background: badge.bg, color: badge.color }}>
+                        {lead.etapa}
+                      </span>
+                    </td>
+                    <td style={{ color: "#94a3b8" }}>{lead.fechaDisplay}</td>
                   </tr>
-                ))}
-              </tbody>
-            )}
-          </table>
-
-          {!loading && !error && campanas.length === 0 && (
-            <div className="px-4 py-10 text-center text-sm text-gray-500">
-              Sin campañas de mensajes activas en este período
-            </div>
+                );
+              })}
+            </tbody>
           )}
+        </table>
+
+        {!loading && !error && leads.length === 0 && (
+          <div className="px-4 py-10 text-center text-sm text-gray-500">
+            Sin leads de WhatsApp en este período
+          </div>
+        )}
+      </div>
+
+      <div className="card" style={{ marginTop: 24 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 16 }}>
+          💬 Campañas de WhatsApp en Meta
         </div>
-        {!loading && campanas.length > 0 && (
-          <p className="text-xs text-gray-400">
-            "Deals creados en Bitrix" por campaña no está disponible: Bitrix no guarda un campo que
-            relacione cada deal de WhatsApp con la campaña de Meta que lo originó. La comparación
-            agregada (Meta vs Bitrix) sí está arriba, en "Reconciliación Meta → Bitrix".
-          </p>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Campaña</th>
+              <th>Gasto</th>
+              <th>Impresiones</th>
+              <th>Conversaciones iniciadas</th>
+              <th>Costo por conv.</th>
+            </tr>
+          </thead>
+          {loading ? (
+            <SkeletonRows cols={5} />
+          ) : (
+            <tbody>
+              {campanas.map((c) => {
+                const costoConv = c.mensajes > 0 ? c.gasto / c.mensajes : 0;
+                return (
+                  <tr key={c.nombre}>
+                    <td style={{ fontWeight: 500 }}>{c.nombre}</td>
+                    <td>${Number(c.gasto).toLocaleString("es-CO")}</td>
+                    <td>{Number(c.impresiones).toLocaleString("es-CO")}</td>
+                    <td>
+                      <span style={{ fontWeight: 700, color: "#16a34a" }}>{c.mensajes}</span>
+                    </td>
+                    <td>${Number(costoConv).toLocaleString("es-CO", { maximumFractionDigits: 2 })}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          )}
+        </table>
+
+        {!loading && !error && campanas.length === 0 && (
+          <div className="px-4 py-10 text-center text-sm text-gray-500">
+            Sin campañas de mensajes activas en este período
+          </div>
         )}
       </div>
     </div>
