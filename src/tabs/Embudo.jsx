@@ -7,58 +7,50 @@ const RANGOS = [
   { value: "30d", label: "Últimos 30 días" },
 ];
 
-// Grupo visual por fase del pipeline Transaccional (categoryId 49)
-const GRUPO_POR_ETAPA = {
-  "C49:NEW": "inicio",
-  "C49:UC_P9SE7Z": "inicio",
-  "C49:UC_5M8VT8": "medio",
-  "C49:UC_4Y8FTH": "medio",
-  "C49:PREPARATION": "medio",
-  "C49:PREPAYMENT_INVOIC": "medio",
-  "C49:UC_IG8XXA": "medio",
-  "C49:FINAL_INVOICE": "cierre",
-  "C49:UC_WMZ03O": "cierre",
-  "C49:UC_YO6ROS": "cierre",
-  "C49:UC_6A17DV": "cierre",
-  "C49:UC_3J1LL7": "cierre",
-  "C49:UC_H36U8W": "cierre",
-  "C49:UC_FNYTZ5": "cierre",
-  "C49:WON": "ganado",
-  "C49:LOSE": "perdido",
+// Color por etapa del pipeline Transaccional (categoryId 49)
+const COLORES = {
+  "C49:NEW": "#6366f1",
+  "C49:UC_P9SE7Z": "#f59e0b",
+  "C49:UC_5M8VT8": "#0ea5e9",
+  "C49:UC_4Y8FTH": "#0ea5e9",
+  "C49:PREPARATION": "#10b981",
+  "C49:PREPAYMENT_INVOIC": "#10b981",
+  "C49:UC_IG8XXA": "#10b981",
+  "C49:FINAL_INVOICE": "#8b5cf6",
+  "C49:UC_WMZ03O": "#8b5cf6",
+  "C49:UC_YO6ROS": "#8b5cf6",
+  "C49:UC_6A17DV": "#8b5cf6",
+  "C49:UC_3J1LL7": "#f97316",
+  "C49:UC_H36U8W": "#f97316",
+  "C49:UC_FNYTZ5": "#f97316",
+  "C49:WON": "#16a34a",
+  "C49:LOSE": "#ef4444",
 };
-
-const COLOR_POR_GRUPO = {
-  inicio: "bg-blue-500",
-  medio: "bg-emerald-500",
-  cierre: "bg-orange-500",
-  ganado: "bg-green-800",
-  perdido: "bg-red-500",
-};
-
-function SummaryCard({ label, value }) {
-  return (
-    <div className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold text-gray-900">{value}</div>
-    </div>
-  );
-}
 
 function FunnelRow({ etapa, ancho }) {
-  const grupo = GRUPO_POR_ETAPA[etapa.codigo] || "medio";
   return (
-    <div className="flex items-center gap-4">
-      <div className="w-14 shrink-0 text-right text-lg font-semibold text-gray-900">
+    <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 10 }}>
+      <div style={{ width: 48, textAlign: "right", fontSize: 20, fontWeight: 700, color: "#0f172a", flexShrink: 0 }}>
         {etapa.total}
       </div>
-      <div className="flex flex-1 justify-center">
+      <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
         <div
-          className={`h-10 rounded ${COLOR_POR_GRUPO[grupo]}`}
-          style={{ width: `${ancho}%` }}
+          style={{
+            width: `${ancho}%`,
+            height: 44,
+            borderRadius: 8,
+            background: COLORES[etapa.codigo] || "#94a3b8",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "width 0.6s ease",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          }}
         />
       </div>
-      <div className="w-64 shrink-0 text-sm text-gray-700">
-        {etapa.nombre} <span className="text-gray-400">· {etapa.porcentaje}</span>
+      <div style={{ width: 200, flexShrink: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: "#374151" }}>{etapa.nombre}</div>
+        <div style={{ fontSize: 12, color: "#94a3b8" }}>{etapa.porcentaje}</div>
       </div>
     </div>
   );
@@ -66,17 +58,14 @@ function FunnelRow({ etapa, ancho }) {
 
 function SkeletonFunnel() {
   return (
-    <div className="flex flex-col gap-3">
+    <div>
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4">
-          <div className="h-5 w-14 shrink-0 animate-pulse rounded bg-gray-200" />
-          <div className="flex flex-1 justify-center">
-            <div
-              className="h-10 animate-pulse rounded bg-gray-200"
-              style={{ width: `${80 - i * 10}%` }}
-            />
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 10 }}>
+          <div className="skeleton" style={{ width: 48, height: 20, flexShrink: 0 }} />
+          <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+            <div className="skeleton" style={{ height: 44, width: `${80 - i * 10}%` }} />
           </div>
-          <div className="h-4 w-64 shrink-0 animate-pulse rounded bg-gray-200" />
+          <div className="skeleton" style={{ width: 200, height: 16, flexShrink: 0 }} />
         </div>
       ))}
     </div>
@@ -140,7 +129,7 @@ export default function Embudo() {
     totalEntradas > 0 ? ((ganadosTotal / totalEntradas) * 100).toFixed(1) : "0";
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-3">
         <select
           value={range}
@@ -155,13 +144,20 @@ export default function Embudo() {
         </select>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>Pipeline Transaccional</div>
+          <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>
+            Etapas activas con deals en el período
+          </div>
+        </div>
+
         {loading ? (
           <SkeletonFunnel />
         ) : error ? (
           <div className="py-10 text-center text-sm text-red-600">{error}</div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div>
             {etapasVisibles.map((etapa) => (
               <FunnelRow key={etapa.codigo} etapa={etapa} ancho={anchoDe(etapa.total)} />
             ))}
@@ -170,17 +166,59 @@ export default function Embudo() {
       </div>
 
       {!loading && !error && etapaPerdido && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6">
-          <FunnelRow etapa={etapaPerdido} ancho={anchoDe(etapaPerdido.total)} />
+        <div
+          style={{
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
+            borderRadius: 12,
+            padding: "16px 24px",
+            marginTop: 16,
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+          }}
+        >
+          <div style={{ fontSize: 28, fontWeight: 700, color: "#dc2626", width: 48, textAlign: "right" }}>
+            {etapaPerdido.total}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div
+              style={{
+                background: "#ef4444",
+                height: 44,
+                borderRadius: 8,
+                width: `${anchoDe(etapaPerdido.total)}%`,
+              }}
+            />
+          </div>
+          <div style={{ width: 200 }}>
+            <div style={{ fontSize: 14, fontWeight: 500, color: "#dc2626" }}>❌ CERRADO — Perdido</div>
+            <div style={{ fontSize: 12, color: "#94a3b8" }}>{etapaPerdido.porcentaje}</div>
+          </div>
         </div>
       )}
 
       {!loading && !error && (
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <SummaryCard label="Total entradas" value={totalEntradas} />
-          <SummaryCard label="Llegaron a cotización" value={`${cotizacionTotal} · ${cotizacionPct}%`} />
-          <SummaryCard label="Ganados" value={ganadosTotal} />
-          <SummaryCard label="Tasa conversión" value={`${tasaConversion}%`} />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginTop: 24 }}>
+          <div className="metric-card" style={{ borderLeftColor: "#6366f1" }}>
+            <div className="metric-label">Total entradas</div>
+            <div className="metric-value">{totalEntradas}</div>
+          </div>
+          <div className="metric-card" style={{ borderLeftColor: "#0ea5e9" }}>
+            <div className="metric-label">Llegaron a cotización</div>
+            <div className="metric-value">{cotizacionTotal}</div>
+            <div className="metric-sub">{cotizacionPct}% del total</div>
+          </div>
+          <div className="metric-card" style={{ borderLeftColor: "#16a34a" }}>
+            <div className="metric-label">Ganados</div>
+            <div className="metric-value">{ganadosTotal}</div>
+          </div>
+          <div className="metric-card" style={{ borderLeftColor: "#f59e0b" }}>
+            <div className="metric-label">Tasa conversión</div>
+            <div className="metric-value" style={{ color: "#f59e0b" }}>
+              {tasaConversion}%
+            </div>
+          </div>
         </div>
       )}
     </div>
