@@ -7,12 +7,20 @@ const RANGOS = [
   { value: "30d", label: "Últimos 30 días" },
 ];
 
-function SummaryCard({ label, value }) {
+function DiffBadge({ diff }) {
   return (
-    <div className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold text-gray-900">{value}</div>
-    </div>
+    <span
+      style={{
+        background: diff > 0 ? "#fef2f2" : "#f0fdf4",
+        color: diff > 0 ? "#dc2626" : "#16a34a",
+        fontWeight: 700,
+        padding: "2px 10px",
+        borderRadius: 20,
+        fontSize: 13,
+      }}
+    >
+      {diff > 0 ? `+${diff}` : diff}
+    </span>
   );
 }
 
@@ -20,10 +28,10 @@ function SkeletonRows() {
   return (
     <tbody>
       {Array.from({ length: 4 }).map((_, i) => (
-        <tr key={i} className="border-b border-gray-100">
+        <tr key={i}>
           {Array.from({ length: 4 }).map((__, j) => (
-            <td key={j} className="px-4 py-3">
-              <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
+            <td key={j} style={{ padding: "14px 16px" }}>
+              <div className="skeleton" style={{ height: 16, width: "100%" }} />
             </td>
           ))}
         </tr>
@@ -99,7 +107,7 @@ export default function MetaVsCRM() {
   const diferenciaTotal = totalMeta - totalCRM;
 
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-3">
         <select
           value={range}
@@ -114,33 +122,56 @@ export default function MetaVsCRM() {
         </select>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <SummaryCard label="Meta Ads" value={totalMeta} />
-        <SummaryCard label="En Bitrix" value={totalCRM} />
-        <SummaryCard
-          label="Diferencia"
-          value={
-            <span className={diferenciaTotal > 0 ? "text-red-600" : "text-green-600"}>
-              {diferenciaTotal}
-            </span>
-          }
-        />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+        <div className="metric-card" style={{ borderLeftColor: "#6366f1" }}>
+          <div className="metric-label">Meta Ads</div>
+          <div className="metric-value">{totalMeta}</div>
+        </div>
+        <div className="metric-card" style={{ borderLeftColor: "#0ea5e9" }}>
+          <div className="metric-label">En Bitrix</div>
+          <div className="metric-value">{totalCRM}</div>
+        </div>
+        <div
+          className="metric-card"
+          style={{ borderLeftColor: diferenciaTotal > 0 ? "#ef4444" : "#16a34a" }}
+        >
+          <div className="metric-label">Diferencia</div>
+          <div
+            className="metric-value"
+            style={{ color: diferenciaTotal > 0 ? "#ef4444" : "#16a34a" }}
+          >
+            {diferenciaTotal}
+          </div>
+        </div>
       </div>
 
       {cached && (
-        <span style={{ fontSize: 11, color: "#94a3b8" }}>
-          ⚡ Datos en caché · actualiza en 30 min
-        </span>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            background: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            borderRadius: 20,
+            padding: "4px 12px",
+            fontSize: 12,
+            color: "#16a34a",
+            marginBottom: 16,
+          }}
+        >
+          ⚡ Datos en caché · se actualiza cada 30 min
+        </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-        <table className="w-full text-left text-sm">
+      <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)", overflow: "hidden" }}>
+        <table className="table">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
-              <th className="px-4 py-3">Nombre formulario</th>
-              <th className="px-4 py-3">Leads Meta</th>
-              <th className="px-4 py-3">Leads Bitrix</th>
-              <th className="px-4 py-3">Diferencia</th>
+            <tr>
+              <th>Formulario</th>
+              <th>Leads Meta</th>
+              <th>Leads Bitrix</th>
+              <th>Diferencia</th>
             </tr>
           </thead>
           {loading ? (
@@ -148,16 +179,12 @@ export default function MetaVsCRM() {
           ) : (
             <tbody>
               {filas.map((fila) => (
-                <tr key={fila.nombre} className="border-b border-gray-100 last:border-0">
-                  <td className="px-4 py-3 text-gray-700">{fila.nombre}</td>
-                  <td className="px-4 py-3 text-gray-700">{fila.leadsMeta}</td>
-                  <td className="px-4 py-3 text-gray-700">{fila.leadsCRM}</td>
-                  <td
-                    className={`px-4 py-3 font-medium ${
-                      fila.diferencia > 0 ? "text-red-600" : "text-green-600"
-                    }`}
-                  >
-                    {fila.diferencia}
+                <tr key={fila.nombre}>
+                  <td>{fila.nombre}</td>
+                  <td>{fila.leadsMeta}</td>
+                  <td>{fila.leadsCRM}</td>
+                  <td>
+                    <DiffBadge diff={fila.diferencia} />
                   </td>
                 </tr>
               ))}
