@@ -1,12 +1,5 @@
 import { useEffect, useState } from "react";
-import { ASESORES } from "../constants.js";
-
-const RANGOS = [
-  { value: "today", label: "Hoy" },
-  { value: "yesterday", label: "Ayer" },
-  { value: "7d", label: "Últimos 7 días" },
-  { value: "30d", label: "Últimos 30 días" },
-];
+import { ASESORES, RANGOS, TRM } from "../constants.js";
 
 const FUENTE_CLASS = {
   "Meta Ads": "badge-meta",
@@ -44,7 +37,7 @@ function SkeletonRows() {
     <tbody>
       {Array.from({ length: 4 }).map((_, i) => (
         <tr key={i}>
-          {Array.from({ length: 6 }).map((__, j) => (
+          {Array.from({ length: 7 }).map((__, j) => (
             <td key={j} style={{ padding: "14px 16px" }}>
               <div className="skeleton" style={{ height: 16, width: "100%" }} />
             </td>
@@ -57,12 +50,19 @@ function SkeletonRows() {
 
 export default function Ventas() {
   const [range, setRange] = useState("today");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
   const [asesor, setAsesor] = useState("");
   const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [trm, setTrm] = useState(TRM);
+  const [editTrm, setEditTrm] = useState(false);
+
+  const rangoListo = range !== "custom" || (desde && hasta);
 
   useEffect(() => {
+    if (!rangoListo) return;
     let cancelado = false;
 
     async function cargar() {
@@ -70,6 +70,10 @@ export default function Ventas() {
       setError(null);
 
       const params = new URLSearchParams({ range, etapa: "ganado" });
+      if (range === "custom") {
+        params.set("desde", desde);
+        params.set("hasta", hasta);
+      }
       if (asesor) params.set("asesor", asesor);
 
       try {
@@ -97,14 +101,19 @@ export default function Ventas() {
     return () => {
       cancelado = true;
     };
-  }, [range, asesor]);
+  }, [range, desde, hasta, asesor]);
 
-  const totalVentas = ventas.length;
-  const valorTotal = ventas.reduce((s, v) => s + (v.valor || 0), 0);
-  const ticketPromedio = totalVentas > 0 ? valorTotal / totalVentas : 0;
+  const ventasConUSD = ventas.map((v) => ({
+    ...v,
+    valorUSD: v.moneda === "COP" ? v.valor / trm : v.valor,
+  }));
+
+  const totalVentas = ventasConUSD.length;
+  const valorTotalUSD = ventasConUSD.reduce((s, v) => s + (v.valorUSD || 0), 0);
+  const ticketPromedio = totalVentas > 0 ? valorTotalUSD / totalVentas : 0;
 
   const porFormulario = {};
-  ventas.forEach((v) => {
+  ventasConUSD.forEach((v) => {
     const key = v.formulario || "Sin formulario";
     porFormulario[key] = (porFormulario[key] || 0) + 1;
   });
@@ -113,36 +122,84 @@ export default function Ventas() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-3">
-        <select
-          value={range}
-          onChange={(e) => setRange(e.target.value)}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
-        >
-          {RANGOS.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-            </option>
-          ))}
-        </select>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-3">
+          <select
+            value={range}
+            onChange={(e) => setRange(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+          >
+            {RANGOS.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
 
-        <select
-          value={asesor}
-          onChange={(e) => setAsesor(e.target.value)}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
-        >
-          <option value="">Todos</option>
-          {ASESORES.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.nombre}
-            </option>
-          ))}
-        </select>
+          {range === "custom" && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="date"
+                value={desde}
+                onChange={(e) => setDesde(e.target.value)}
+                style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: 14 }}
+              />
+              <span style={{ color: "#94a3b8" }}>→</span>
+              <input
+                type="date"
+                value={hasta}
+                onChange={(e) => setHasta(e.target.value)}
+                style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: 14 }}
+              />
+            </div>
+          )}
+
+          <select
+            value={asesor}
+            onChange={(e) => setAsesor(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+          >
+            <option value="">Todos</option>
+            {ASESORES.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+          <span style={{ color: "#94a3b8" }}>TRM:</span>
+          {editTrm ? (
+            <input
+              type="number"
+              value={trm}
+              onChange={(e) => setTrm(Number(e.target.value))}
+              onBlur={() => setEditTrm(false)}
+              style={{ width: 80, padding: "2px 8px", borderRadius: 6, border: "1px solid #6366f1", fontSize: 13 }}
+              autoFocus
+            />
+          ) : (
+            <span
+              onClick={() => setEditTrm(true)}
+              style={{
+                background: "#ede9fe",
+                color: "#6d28d9",
+                padding: "2px 10px",
+                borderRadius: 20,
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              ${trm.toLocaleString()} COP/USD ✏️
+            </span>
+          )}
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
         <MetricCard label="Total Ventas" value={totalVentas} color="#16a34a" />
-        <MetricCard label="Valor Total" value={formatoMoneda(valorTotal)} color="#6366f1" />
+        <MetricCard label="Valor Total USD" value={formatoMoneda(valorTotalUSD)} color="#6366f1" />
         <MetricCard label="Ticket Promedio" value={formatoMoneda(ticketPromedio)} color="#0ea5e9" />
         <MetricCard label="Mejor Formulario" value={mejorFormulario} color="#f59e0b" />
       </div>
@@ -161,7 +218,8 @@ export default function Ventas() {
               <th>Asesor</th>
               <th>Formulario</th>
               <th>Fuente</th>
-              <th>Valor</th>
+              <th>Valor original</th>
+              <th>Valor USD</th>
               <th>Fecha cierre</th>
             </tr>
           </thead>
@@ -169,7 +227,7 @@ export default function Ventas() {
             <SkeletonRows />
           ) : (
             <tbody>
-              {ventas.map((venta) => {
+              {ventasConUSD.map((venta) => {
                 const asesorInfo = asesorPorId(venta.asesorId);
                 return (
                   <tr key={venta.id}>
@@ -191,8 +249,11 @@ export default function Ventas() {
                         {venta.fuente}
                       </span>
                     </td>
-                    <td style={{ fontWeight: 700, color: "#16a34a" }}>
+                    <td>
                       ${Number(venta.valor).toLocaleString("es-CO")} {venta.moneda}
+                    </td>
+                    <td style={{ fontWeight: 700, color: "#16a34a" }}>
+                      {formatoMoneda(venta.valorUSD)}
                     </td>
                     <td style={{ color: "#94a3b8" }}>{formatoFecha(venta.fechaCierre)}</td>
                   </tr>
@@ -202,7 +263,7 @@ export default function Ventas() {
           )}
         </table>
 
-        {!loading && !error && ventas.length === 0 && (
+        {!loading && !error && ventasConUSD.length === 0 && (
           <div style={{ textAlign: "center", padding: 48, color: "#94a3b8" }}>
             💰 Sin ventas cerradas en este período
           </div>

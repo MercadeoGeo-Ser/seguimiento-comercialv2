@@ -4,8 +4,8 @@ const GRAPH_URL = "https://graph.facebook.com/v25.0";
 const PAGE_ID = "378061358891359";
 const AD_ACCOUNT_ID = "act_2136722620087946";
 
-function rangoTimestamps(range) {
-  const { from, to } = getRango(range);
+function rangoTimestamps(range, desde, hasta) {
+  const { from, to } = getRango(range, desde, hasta);
   const [yFrom, mFrom, dFrom] = from.split('-').map(Number);
   const [yTo, mTo, dTo] = to.split('-').map(Number);
 
@@ -97,8 +97,8 @@ async function obtenerLeadsFormulario(form, sinceTs, untilTs, pageToken) {
   return datos.map((lead) => datosLeadFormulario(lead, form.name));
 }
 
-async function obtenerLeadsMeta(pageToken, range) {
-  const { sinceTs, untilTs } = rangoTimestamps(range);
+async function obtenerLeadsMeta(pageToken, range, desde, hasta) {
+  const { sinceTs, untilTs } = rangoTimestamps(range, desde, hasta);
   const forms = await getAllForms(pageToken, PAGE_ID);
   const formsActivos = forms.filter((f) => (f.leads_count || 0) > 0);
 
@@ -114,9 +114,9 @@ async function obtenerLeadsMeta(pageToken, range) {
   return { ok: true, leads, total: leads.length };
 }
 
-async function obtenerCampanasWhatsapp(pageToken, range) {
-  const { from: desde, to: hasta } = getRango(range);
-  const timeRange = encodeURIComponent(JSON.stringify({ since: desde, until: hasta }));
+async function obtenerCampanasWhatsapp(pageToken, range, desde, hasta) {
+  const { from, to } = getRango(range, desde, hasta);
+  const timeRange = encodeURIComponent(JSON.stringify({ since: from, until: to }));
 
   const filtering = JSON.stringify([
     { field: "objective", operator: "IN", value: ["MESSAGES", "OUTCOME_ENGAGEMENT"] },
@@ -168,9 +168,11 @@ const cache = {};
 export default async function handler(req, res) {
   try {
     const range = req.query.range || "today";
+    const { desde, hasta } = req.query;
     const tipo = req.query.tipo;
     const wantsLeads = req.query.leads === "1";
-    const cacheKey = wantsLeads ? `leads_${range}` : tipo === "whatsapp" ? `whatsapp_${range}` : `meta_${range}`;
+    const rangeKey = range === "custom" ? `custom_${desde}_${hasta}` : range;
+    const cacheKey = wantsLeads ? `leads_${rangeKey}` : tipo === "whatsapp" ? `whatsapp_${rangeKey}` : `meta_${rangeKey}`;
     const ttl = wantsLeads ? TTL_LEADS : TTL;
     const ahora = Date.now();
 
@@ -185,18 +187,18 @@ export default async function handler(req, res) {
     }
 
     if (tipo === "whatsapp") {
-      const resultado = await obtenerCampanasWhatsapp(PAGE_TOKEN, range);
+      const resultado = await obtenerCampanasWhatsapp(PAGE_TOKEN, range, desde, hasta);
       cache[cacheKey] = { data: resultado, ts: ahora };
       return res.status(200).json(resultado);
     }
 
     if (wantsLeads) {
-      const resultado = await obtenerLeadsMeta(PAGE_TOKEN, range);
+      const resultado = await obtenerLeadsMeta(PAGE_TOKEN, range, desde, hasta);
       cache[cacheKey] = { data: resultado, ts: ahora };
       return res.status(200).json(resultado);
     }
 
-    const { sinceTs, untilTs } = rangoTimestamps(range);
+    const { sinceTs, untilTs } = rangoTimestamps(range, desde, hasta);
 
     const forms = await getAllForms(PAGE_TOKEN, PAGE_ID);
     const formsActivos = forms.filter((f) => (f.leads_count || 0) > 0);

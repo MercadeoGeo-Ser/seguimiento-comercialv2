@@ -34,16 +34,35 @@ export function fechaColombia(iso) {
   });
 }
 
-export function getRango(range) {
+export function getRango(range, desde, hasta) {
   const hoy = claveFechaColombia(new Date().toISOString());
   const shift = (str, n) => {
     const [y, m, d] = str.split('-').map(Number);
     return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
   };
+
   if (range === "today") return { from: hoy, to: hoy };
   if (range === "yesterday") return { from: shift(hoy, -1), to: shift(hoy, -1) };
   if (range === "7d") return { from: shift(hoy, -7), to: hoy };
   if (range === "30d") return { from: shift(hoy, -30), to: hoy };
+
+  if (range === "thismonth") {
+    const [y, m] = hoy.split("-");
+    return { from: `${y}-${m}-01`, to: hoy };
+  }
+
+  if (range === "lastmonth") {
+    const [y, m] = hoy.split("-").map(Number);
+    const primerDiaMesAnterior = new Date(Date.UTC(y, m - 2, 1));
+    const ly = primerDiaMesAnterior.getUTCFullYear();
+    const lm = primerDiaMesAnterior.getUTCMonth();
+    const ultimoDia = new Date(Date.UTC(ly, lm + 1, 0)).getUTCDate();
+    const mm = String(lm + 1).padStart(2, "0");
+    return { from: `${ly}-${mm}-01`, to: `${ly}-${mm}-${String(ultimoDia).padStart(2, "0")}` };
+  }
+
+  if (range === "custom" && desde && hasta) return { from: desde, to: hasta };
+
   return { from: shift(hoy, -7), to: hoy };
 }
 

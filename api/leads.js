@@ -1,4 +1,4 @@
-import { ASESORES } from "../src/constants.js";
+import { ASESORES, TRM } from "../src/constants.js";
 import { ASESOR_IDS, ETAPAS, getRango, compensarFecha, fechaFin, fechaColombia, fetchDeals } from "./_lib/bitrix.js";
 
 const FIELDS = [
@@ -61,8 +61,8 @@ function nombreAsesor(assignedById) {
 
 export default async function handler(req, res) {
   try {
-    const { range, asesor, fuente, etapa } = req.query;
-    const { from, to } = getRango(range);
+    const { range, asesor, fuente, etapa, desde, hasta } = req.query;
+    const { from, to } = getRango(range, desde, hasta);
 
     const filter = {
       CATEGORY_ID: "49",
@@ -98,6 +98,10 @@ export default async function handler(req, res) {
         oportunidad: deal.OPPORTUNITY,
         valor: parseFloat(deal.OPPORTUNITY || 0),
         moneda: deal.CURRENCY_ID || "USD",
+        valorUSD:
+          deal.CURRENCY_ID === "COP"
+            ? parseFloat(deal.OPPORTUNITY || 0) / TRM
+            : parseFloat(deal.OPPORTUNITY || 0),
         fechaCierre: deal.CLOSEDATE ? normalizarFecha(deal.CLOSEDATE) : null,
         formulario: deal.UF_CRM_1769101707140 || null,
         fuente: clasificarFuente(deal),

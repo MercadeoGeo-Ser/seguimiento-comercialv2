@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
-
-const RANGOS = [
-  { value: "today", label: "Hoy" },
-  { value: "yesterday", label: "Ayer" },
-  { value: "7d", label: "Últimos 7 días" },
-  { value: "30d", label: "Últimos 30 días" },
-];
+import { RANGOS } from "../constants.js";
 
 function DiffBadge({ diff }) {
   return (
@@ -55,6 +49,8 @@ function combinarPorFormulario(porFormularioMeta, leadsBitrix) {
 
 export default function MetaVsCRM() {
   const [range, setRange] = useState("today");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
   const [filas, setFilas] = useState([]);
   const [totalMeta, setTotalMeta] = useState(0);
   const [totalCRM, setTotalCRM] = useState(0);
@@ -62,17 +58,28 @@ export default function MetaVsCRM() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const rangoListo = range !== "custom" || (desde && hasta);
+
   useEffect(() => {
+    if (!rangoListo) return;
     let cancelado = false;
 
     async function cargar() {
       setLoading(true);
       setError(null);
 
+      const qs = new URLSearchParams({ range });
+      if (range === "custom") {
+        qs.set("desde", desde);
+        qs.set("hasta", hasta);
+      }
+      const qsLeads = new URLSearchParams(qs);
+      qsLeads.set("fuente", "Meta Ads");
+
       try {
         const [metaRes, leadsRes] = await Promise.all([
-          fetch(`/api/meta?range=${range}`),
-          fetch(`/api/leads?range=${range}&fuente=${encodeURIComponent("Meta Ads")}`),
+          fetch(`/api/meta?${qs.toString()}`),
+          fetch(`/api/leads?${qsLeads.toString()}`),
         ]);
         const metaData = await metaRes.json();
         const leadsData = await leadsRes.json();
@@ -102,7 +109,7 @@ export default function MetaVsCRM() {
     return () => {
       cancelado = true;
     };
-  }, [range]);
+  }, [range, desde, hasta]);
 
   const diferenciaTotal = totalMeta - totalCRM;
 
@@ -120,6 +127,24 @@ export default function MetaVsCRM() {
             </option>
           ))}
         </select>
+
+        {range === "custom" && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              type="date"
+              value={desde}
+              onChange={(e) => setDesde(e.target.value)}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: 14 }}
+            />
+            <span style={{ color: "#94a3b8" }}>→</span>
+            <input
+              type="date"
+              value={hasta}
+              onChange={(e) => setHasta(e.target.value)}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: 14 }}
+            />
+          </div>
+        )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>

@@ -1,12 +1,5 @@
 import { useEffect, useState } from "react";
-import { ASESORES } from "../constants.js";
-
-const RANGOS = [
-  { value: "today", label: "Hoy" },
-  { value: "yesterday", label: "Ayer" },
-  { value: "7d", label: "Últimos 7 días" },
-  { value: "30d", label: "Últimos 30 días" },
-];
+import { ASESORES, RANGOS } from "../constants.js";
 
 const FUENTES = [
   { value: "", label: "Todas" },
@@ -81,6 +74,8 @@ function colorTasaCaptura(tasa) {
 
 export default function LiveFeed() {
   const [range, setRange] = useState("today");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
   const [asesor, setAsesor] = useState("");
   const [fuente, setFuente] = useState("");
   const [leads, setLeads] = useState([]);
@@ -90,14 +85,23 @@ export default function LiveFeed() {
   const [captura, setCaptura] = useState({ totalMeta: 0, totalBitrix: 0 });
   const [huerfanos, setHuerfanos] = useState([]);
 
+  const rangoListo = range !== "custom" || (desde && hasta);
+
   useEffect(() => {
+    if (!rangoListo) return;
     let cancelado = false;
 
     async function cargarCaptura() {
+      const qs = new URLSearchParams({ range });
+      if (range === "custom") {
+        qs.set("desde", desde);
+        qs.set("hasta", hasta);
+      }
+
       try {
         const [leadsRes, metaLeadsRes] = await Promise.all([
-          fetch(`/api/leads?range=${range}`).then((r) => r.json()),
-          fetch(`/api/meta?leads=1&range=${range}`).then((r) => r.json()),
+          fetch(`/api/leads?${qs.toString()}`).then((r) => r.json()),
+          fetch(`/api/meta?leads=1&${qs.toString()}`).then((r) => r.json()),
         ]);
         if (cancelado) return;
 
@@ -147,9 +151,10 @@ export default function LiveFeed() {
     return () => {
       cancelado = true;
     };
-  }, [range]);
+  }, [range, desde, hasta]);
 
   useEffect(() => {
+    if (!rangoListo) return;
     let cancelado = false;
 
     async function cargar() {
@@ -157,6 +162,10 @@ export default function LiveFeed() {
       setError(null);
 
       const params = new URLSearchParams({ range });
+      if (range === "custom") {
+        params.set("desde", desde);
+        params.set("hasta", hasta);
+      }
       if (asesor) params.set("asesor", asesor);
       if (fuente) params.set("fuente", fuente);
 
@@ -185,7 +194,7 @@ export default function LiveFeed() {
     return () => {
       cancelado = true;
     };
-  }, [range, asesor, fuente]);
+  }, [range, desde, hasta, asesor, fuente]);
 
   const sinGestionarCount = leads.filter((lead) => lead.etapaRaw === PRIMERA_ETAPA_RAW).length;
   const otrosCount = leads.filter(
@@ -223,6 +232,24 @@ export default function LiveFeed() {
             </option>
           ))}
         </select>
+
+        {range === "custom" && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              type="date"
+              value={desde}
+              onChange={(e) => setDesde(e.target.value)}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: 14 }}
+            />
+            <span style={{ color: "#94a3b8" }}>→</span>
+            <input
+              type="date"
+              value={hasta}
+              onChange={(e) => setHasta(e.target.value)}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: 14 }}
+            />
+          </div>
+        )}
 
         <select
           value={asesor}

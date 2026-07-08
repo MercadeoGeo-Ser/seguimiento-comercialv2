@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
-
-const RANGOS = [
-  { value: "today", label: "Hoy" },
-  { value: "yesterday", label: "Ayer" },
-  { value: "7d", label: "Últimos 7 días" },
-  { value: "30d", label: "Últimos 30 días" },
-];
+import { RANGOS } from "../constants.js";
 
 function colorTasaCaptura(tasa) {
   const valor = parseFloat(tasa);
@@ -43,6 +37,8 @@ function SkeletonRows() {
 
 export default function Resumen() {
   const [range, setRange] = useState("today");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
   const [asesores, setAsesores] = useState([]);
   const [totales, setTotales] = useState({ totalLeads: 0, metaAds: 0, ganados: 0, conversion: "0.0" });
   const [loading, setLoading] = useState(true);
@@ -51,17 +47,26 @@ export default function Resumen() {
   const [porEtapa, setPorEtapa] = useState({});
   const [totalLeads, setTotalLeads] = useState(0);
 
+  const rangoListo = range !== "custom" || (desde && hasta);
+
   useEffect(() => {
+    if (!rangoListo) return;
     let cancelado = false;
 
     async function cargar() {
       setLoading(true);
       setError(null);
 
+      const qs = new URLSearchParams({ range });
+      if (range === "custom") {
+        qs.set("desde", desde);
+        qs.set("hasta", hasta);
+      }
+
       try {
         const [perfData, metaData] = await Promise.all([
-          fetch(`/api/perf?range=${range}`).then((r) => r.json()),
-          fetch(`/api/meta?range=${range}`).then((r) => r.json()),
+          fetch(`/api/perf?${qs.toString()}`).then((r) => r.json()),
+          fetch(`/api/meta?${qs.toString()}`).then((r) => r.json()),
         ]);
         if (cancelado) return;
 
@@ -92,14 +97,21 @@ export default function Resumen() {
     return () => {
       cancelado = true;
     };
-  }, [range]);
+  }, [range, desde, hasta]);
 
   useEffect(() => {
+    if (!rangoListo) return;
     let cancelado = false;
 
     async function cargarEtapas() {
+      const qs = new URLSearchParams({ range });
+      if (range === "custom") {
+        qs.set("desde", desde);
+        qs.set("hasta", hasta);
+      }
+
       try {
-        const response = await fetch(`/api/leads?range=${range}`);
+        const response = await fetch(`/api/leads?${qs.toString()}`);
         const data = await response.json();
         if (cancelado) return;
 
@@ -124,7 +136,7 @@ export default function Resumen() {
     return () => {
       cancelado = true;
     };
-  }, [range]);
+  }, [range, desde, hasta]);
 
   const perdidos = captura.totalMeta - captura.totalBitrix;
   const tasaCaptura =
@@ -144,6 +156,24 @@ export default function Resumen() {
             </option>
           ))}
         </select>
+
+        {range === "custom" && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              type="date"
+              value={desde}
+              onChange={(e) => setDesde(e.target.value)}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: 14 }}
+            />
+            <span style={{ color: "#94a3b8" }}>→</span>
+            <input
+              type="date"
+              value={hasta}
+              onChange={(e) => setHasta(e.target.value)}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: 14 }}
+            />
+          </div>
+        )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 16 }}>

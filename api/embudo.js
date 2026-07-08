@@ -4,8 +4,8 @@ const FIELDS = ["ID", "STAGE_ID"];
 
 export default async function handler(req, res) {
   try {
-    const { range } = req.query;
-    const { from, to } = getRango(range);
+    const { range, desde, hasta } = req.query;
+    const { from, to } = getRango(range, desde, hasta);
 
     const filter = {
       CATEGORY_ID: "49",
