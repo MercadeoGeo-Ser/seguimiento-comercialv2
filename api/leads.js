@@ -4,7 +4,7 @@ import { ASESOR_IDS, ETAPAS, getRango, compensarFecha, fechaFin, fechaColombia, 
 const FIELDS = [
   "ID", "TITLE", "ASSIGNED_BY_ID", "STAGE_ID", "SOURCE_ID",
   "DATE_CREATE", "OPPORTUNITY", "CATEGORY_ID", "NAME", "LAST_NAME",
-  "UF_CRM_1769101707140", "CONTACT_ID", "PHONE", "UF_CRM_PHONE"
+  "UF_CRM_1769101707140", "CONTACT_ID", "PHONE", "UF_CRM_PHONE", "EMAIL"
 ];
 
 function normalizarFecha(raw) {
@@ -52,6 +52,7 @@ export default async function handler(req, res) {
         asesorId: deal.ASSIGNED_BY_ID,
         asesor: nombreAsesor(deal.ASSIGNED_BY_ID),
         telefono: deal.PHONE?.[0]?.VALUE || deal.UF_CRM_PHONE || "",
+        email: deal.EMAIL?.[0]?.VALUE || "",
         etapa: ETAPAS[deal.STAGE_ID] || deal.STAGE_ID,
         etapaRaw: deal.STAGE_ID,
         oportunidad: deal.OPPORTUNITY,

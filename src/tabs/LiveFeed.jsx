@@ -39,6 +39,14 @@ function asesorPorId(id) {
   return ASESORES.find((a) => a.id === id);
 }
 
+function normalizarTel(tel) {
+  if (!tel) return "";
+  const digits = tel.replace(/\D/g, "");
+  if (digits.startsWith("57") && digits.length === 12) return digits.slice(2);
+  if (digits.startsWith("1") && digits.length === 11) return digits.slice(1);
+  return digits.slice(-10);
+}
+
 function SkeletonRows() {
   return (
     <tbody>
@@ -96,14 +104,22 @@ export default function LiveFeed() {
         if (leadsRes.ok && metaLeadsRes.ok) {
           const telefonosBitrix = new Set(
             (leadsRes.leads || [])
-              .map((l) => l.telefono?.replace(/\D/g, "").slice(-10))
+              .map((l) => normalizarTel(l.telefono))
+              .filter((t) => t.length >= 7)
+          );
+          const emailsBitrix = new Set(
+            (leadsRes.leads || [])
+              .map((l) => (l.email || "").toLowerCase().trim())
               .filter(Boolean)
           );
 
           const huerfanosDetectados = (metaLeadsRes.leads || [])
             .filter((l) => {
-              const tel = l.telefono?.replace(/\D/g, "").slice(-10);
-              return tel && !telefonosBitrix.has(tel);
+              const tel = normalizarTel(l.telefono);
+              const email = (l.email || "").toLowerCase().trim();
+              const matchTel = tel.length >= 7 && telefonosBitrix.has(tel);
+              const matchEmail = email && emailsBitrix.has(email);
+              return !matchTel && !matchEmail;
             })
             .map((l) => ({
               ...l,
