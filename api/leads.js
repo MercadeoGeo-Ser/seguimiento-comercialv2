@@ -68,6 +68,13 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, deal: deal.result });
     }
 
+    if (req.query.debug === "fielddefs") {
+      const base = process.env.BITRIX_REST_URL;
+      const defRes = await fetch(`${base}/crm.deal.fields.json`);
+      const defs = await defRes.json();
+      return res.status(200).json({ ok: true, fields: defs.result });
+    }
+
     const { range, asesor, fuente, etapa, desde, hasta } = req.query;
     const { from, to } = getRango(range, desde, hasta);
 
