@@ -29,6 +29,23 @@ function nombreAsesor(assignedById) {
 
 export default async function handler(req, res) {
   try {
+    if (req.query.debug === "contact") {
+      const { dealId } = req.query;
+      const base = process.env.BITRIX_REST_URL;
+
+      const dealRes = await fetch(`${base}/crm.deal.get.json?id=${dealId}`);
+      const deal = await dealRes.json();
+
+      let contact = null;
+      const contactId = deal.result?.CONTACT_ID;
+      if (contactId) {
+        const contactRes = await fetch(`${base}/crm.contact.get.json?id=${contactId}`);
+        contact = await contactRes.json();
+      }
+
+      return res.status(200).json({ ok: true, deal, contact });
+    }
+
     const { range, asesor, fuente } = req.query;
     const { from, to } = getRango(range);
 
