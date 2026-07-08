@@ -2,7 +2,7 @@ import { useState } from "react";
 import LiveFeed from "./tabs/LiveFeed.jsx";
 import Resumen from "./tabs/Resumen.jsx";
 import Embudo from "./tabs/Embudo.jsx";
-import Rendimiento from "./tabs/Rendimiento.jsx";
+import Ventas from "./tabs/Ventas.jsx";
 import MetaVsCRM from "./tabs/MetaVsCRM.jsx";
 import WhatsAppLeads from "./tabs/WhatsAppLeads.jsx";
 
@@ -10,7 +10,7 @@ const TABS = [
   { id: "live-feed", label: "Live Feed", icon: "⚡" },
   { id: "resumen", label: "Resumen", icon: "📊" },
   { id: "embudo", label: "Embudo", icon: "🔽" },
-  { id: "rendimiento", label: "Rendimiento", icon: "🏆" },
+  { id: "ventas", label: "Ventas", icon: "💰" },
   { id: "meta-crm", label: "Meta vs CRM", icon: "🔗" },
   { id: "whatsapp-leads", label: "WhatsApp Leads", icon: "💬" },
 ];
@@ -97,7 +97,7 @@ export default function App() {
           {activeTab === "live-feed" && <LiveFeed />}
           {activeTab === "resumen" && <Resumen />}
           {activeTab === "embudo" && <Embudo />}
-          {activeTab === "rendimiento" && <Rendimiento />}
+          {activeTab === "ventas" && <Ventas />}
           {activeTab === "meta-crm" && <MetaVsCRM />}
           {activeTab === "whatsapp-leads" && <WhatsAppLeads />}
         </div>

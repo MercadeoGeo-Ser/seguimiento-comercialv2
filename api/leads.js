@@ -4,7 +4,7 @@ import { ASESOR_IDS, ETAPAS, getRango, compensarFecha, fechaFin, fechaColombia, 
 const FIELDS = [
   "ID", "TITLE", "ASSIGNED_BY_ID", "STAGE_ID", "SOURCE_ID",
   "DATE_CREATE", "OPPORTUNITY", "CATEGORY_ID", "NAME", "LAST_NAME",
-  "UF_CRM_1769101707140", "CONTACT_ID"
+  "UF_CRM_1769101707140", "CONTACT_ID", "CLOSEDATE", "CURRENCY_ID"
 ];
 
 async function fetchContactos(contactIds) {
@@ -61,7 +61,7 @@ function nombreAsesor(assignedById) {
 
 export default async function handler(req, res) {
   try {
-    const { range, asesor, fuente } = req.query;
+    const { range, asesor, fuente, etapa } = req.query;
     const { from, to } = getRango(range);
 
     const filter = {
@@ -70,6 +70,10 @@ export default async function handler(req, res) {
       ">=DATE_CREATE": compensarFecha(from),
       "<=DATE_CREATE": fechaFin(to),
     };
+
+    if (etapa === "ganado") {
+      filter.STAGE_ID = "C49:WON";
+    }
 
     const deals = await fetchDeals(filter, FIELDS);
 
@@ -92,6 +96,9 @@ export default async function handler(req, res) {
         etapa: ETAPAS[deal.STAGE_ID] || deal.STAGE_ID,
         etapaRaw: deal.STAGE_ID,
         oportunidad: deal.OPPORTUNITY,
+        valor: parseFloat(deal.OPPORTUNITY || 0),
+        moneda: deal.CURRENCY_ID || "USD",
+        fechaCierre: deal.CLOSEDATE ? normalizarFecha(deal.CLOSEDATE) : null,
         formulario: deal.UF_CRM_1769101707140 || null,
         fuente: clasificarFuente(deal),
         fechaCreacion,
