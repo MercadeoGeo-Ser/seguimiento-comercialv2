@@ -12,6 +12,16 @@ const colorEtapa = (etapa) => {
   return { bg: "#f1f5f9", color: "#64748b" };
 };
 
+function tiempoRelativo(isoString) {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60000);
+  const horas = Math.floor(diff / 3600000);
+  const dias = Math.floor(diff / 86400000);
+  if (mins < 60) return `hace ${mins} min`;
+  if (horas < 24) return `hace ${horas} h`;
+  return `hace ${dias} día${dias > 1 ? "s" : ""}`;
+}
+
 function asesorPorId(id) {
   return ASESORES.find((a) => a.id === id);
 }
@@ -41,6 +51,7 @@ export default function WhatsAppLeads() {
   const [totalGasto, setTotalGasto] = useState("0.00");
   const [totalMensajes, setTotalMensajes] = useState(0);
   const [costoPorMensaje, setCostoPorMensaje] = useState(0);
+  const [cached, setCached] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -81,6 +92,7 @@ export default function WhatsAppLeads() {
         setTotalGasto(metaData.totalGasto);
         setTotalMensajes(metaData.totalMensajes);
         setCostoPorMensaje(metaData.costoPorMensaje);
+        setCached(Boolean(metaData.cached));
       } catch (err) {
         if (!cancelado) {
           setError(err.message);
@@ -89,6 +101,7 @@ export default function WhatsAppLeads() {
           setTotalGasto("0.00");
           setTotalMensajes(0);
           setCostoPorMensaje(0);
+          setCached(false);
         }
       } finally {
         if (!cancelado) setLoading(false);
@@ -101,6 +114,7 @@ export default function WhatsAppLeads() {
     };
   }, [range, desde, hasta]);
 
+  const totalDeals = leads.length;
   const sinGestionar = leads.filter((lead) => lead.etapaRaw === PRIMERA_ETAPA_RAW).length;
 
   return (
@@ -137,22 +151,30 @@ export default function WhatsAppLeads() {
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
         <div className="metric-card" style={{ borderLeftColor: "#16a34a" }}>
           <div className="metric-label">Deals WhatsApp</div>
-          <div className="metric-value">{leads.length}</div>
+          <div className="metric-value">{totalDeals}</div>
+          <div className="metric-sub">en Bitrix CRM</div>
         </div>
         <div className="metric-card" style={{ borderLeftColor: "#f59e0b" }}>
           <div className="metric-label">Sin Gestionar</div>
           <div className="metric-value">{sinGestionar}</div>
+          <div className="metric-sub">contacto inicial</div>
         </div>
         <div className="metric-card" style={{ borderLeftColor: "#6366f1" }}>
           <div className="metric-label">Gasto Campañas</div>
-          <div className="metric-value">${totalGasto}</div>
+          <div className="metric-value" style={{ fontSize: "1.5rem" }}>
+            ${Number(totalGasto).toLocaleString("es-CO")}
+          </div>
+          <div className="metric-sub">período seleccionado</div>
         </div>
         <div className="metric-card" style={{ borderLeftColor: "#0ea5e9" }}>
-          <div className="metric-label">Costo por Conversación</div>
-          <div className="metric-value">${costoPorMensaje}</div>
+          <div className="metric-label">Costo por Conv.</div>
+          <div className="metric-value" style={{ fontSize: "1.5rem" }}>
+            ${Number(costoPorMensaje).toLocaleString("es-CO")}
+          </div>
+          <div className="metric-sub">{totalMensajes} conversaciones</div>
         </div>
       </div>
 
@@ -162,27 +184,12 @@ export default function WhatsAppLeads() {
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-semibold text-gray-700">Reconciliación Meta → Bitrix</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-          <div className="metric-card" style={{ borderLeftColor: "#6366f1" }}>
-            <div className="metric-label">Conversaciones Meta</div>
-            <div className="metric-value">{totalMensajes}</div>
-          </div>
-          <div className="metric-card" style={{ borderLeftColor: "#0ea5e9" }}>
-            <div className="metric-label">Deals en Bitrix</div>
-            <div className="metric-value">{leads.length}</div>
-          </div>
-          <div className="metric-card" style={{ borderLeftColor: "#ef4444" }}>
-            <div className="metric-label">Sin convertir</div>
-            <div className="metric-value">{totalMensajes - leads.length}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 16 }}>
-          Deals WhatsApp en Bitrix
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+          <span>💬</span> Deals WhatsApp en Bitrix
+          <span style={{ fontSize: 12, fontWeight: 400, color: "#94a3b8", marginLeft: "auto" }}>
+            {totalDeals} registros
+          </span>
         </div>
         <table className="table">
           <thead>
@@ -190,36 +197,51 @@ export default function WhatsAppLeads() {
               <th>Cliente</th>
               <th>Asesor</th>
               <th>Etapa</th>
+              <th>Comentarios</th>
               <th>Fecha</th>
             </tr>
           </thead>
           {loading ? (
-            <SkeletonRows cols={4} />
+            <SkeletonRows cols={5} />
           ) : (
             <tbody>
               {leads.map((lead) => {
                 const asesorInfo = asesorPorId(lead.asesorId);
                 const badge = colorEtapa(lead.etapa);
+                const comentario = (lead.comentarios || "—").replace(/\[\/?(p|br)\]/gi, " ").trim();
                 return (
                   <tr key={lead.id}>
-                    <td>{lead.cliente}</td>
+                    <td style={{ fontWeight: 500 }}>{lead.cliente}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span
+                        <div
                           className="avatar"
-                          style={{ backgroundColor: asesorInfo?.color || "#9ca3af", width: 28, height: 28, fontSize: 12 }}
+                          style={{ background: asesorInfo?.color || "#9ca3af", width: 28, height: 28, fontSize: 12 }}
                         >
                           {lead.asesor ? lead.asesor.charAt(0).toUpperCase() : "?"}
-                        </span>
-                        <span>{lead.asesor || "Sin asignar"}</span>
+                        </div>
+                        <span style={{ fontSize: 13 }}>{lead.asesor || "Sin asignar"}</span>
                       </div>
                     </td>
                     <td>
-                      <span className="badge" style={{ background: badge.bg, color: badge.color }}>
+                      <span
+                        style={{
+                          background: badge.bg,
+                          color: badge.color,
+                          padding: "2px 10px",
+                          borderRadius: 20,
+                          fontSize: 12,
+                          fontWeight: 500,
+                        }}
+                      >
                         {lead.etapa}
                       </span>
                     </td>
-                    <td style={{ color: "#94a3b8" }}>{lead.fechaDisplay}</td>
+                    <td style={{ fontSize: 12, color: "#64748b", maxWidth: 250 }}>
+                      {comentario.slice(0, 100)}
+                      {comentario.length > 100 ? "..." : ""}
+                    </td>
+                    <td style={{ fontSize: 13, color: "#94a3b8" }}>{tiempoRelativo(lead.fechaCreacion)}</td>
                   </tr>
                 );
               })}
@@ -234,9 +256,24 @@ export default function WhatsAppLeads() {
         )}
       </div>
 
-      <div className="card" style={{ marginTop: 24 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 16 }}>
-          💬 Campañas de WhatsApp en Meta
+      <div className="card">
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+          <span>📱</span> Campañas WhatsApp en Meta
+          {cached && (
+            <span
+              style={{
+                fontSize: 11,
+                background: "#f0fdf4",
+                color: "#16a34a",
+                border: "1px solid #bbf7d0",
+                borderRadius: 20,
+                padding: "2px 10px",
+                marginLeft: "auto",
+              }}
+            >
+              ⚡ Caché · 30 min
+            </span>
+          )}
         </div>
         <table className="table">
           <thead>
@@ -244,25 +281,31 @@ export default function WhatsAppLeads() {
               <th>Campaña</th>
               <th>Gasto</th>
               <th>Impresiones</th>
-              <th>Conversaciones iniciadas</th>
-              <th>Costo por conv.</th>
+              <th>Conversaciones</th>
+              <th>Deals en Bitrix</th>
+              <th>Costo/Conv.</th>
             </tr>
           </thead>
           {loading ? (
-            <SkeletonRows cols={5} />
+            <SkeletonRows cols={6} />
           ) : (
             <tbody>
               {campanas.map((c) => {
                 const costoConv = c.mensajes > 0 ? c.gasto / c.mensajes : 0;
                 return (
                   <tr key={c.nombre}>
-                    <td style={{ fontWeight: 500 }}>{c.nombre}</td>
-                    <td>${Number(c.gasto).toLocaleString("es-CO")}</td>
-                    <td>{Number(c.impresiones).toLocaleString("es-CO")}</td>
+                    <td style={{ fontWeight: 500, maxWidth: 300, fontSize: 13 }}>{c.nombre}</td>
+                    <td style={{ fontWeight: 600 }}>${Number(c.gasto).toLocaleString("es-CO")}</td>
+                    <td style={{ color: "#64748b" }}>{Number(c.impresiones).toLocaleString("es-CO")}</td>
                     <td>
-                      <span style={{ fontWeight: 700, color: "#16a34a" }}>{c.mensajes}</span>
+                      <span style={{ fontWeight: 700, color: "#16a34a", fontSize: 15 }}>{c.mensajes}</span>
                     </td>
-                    <td>${Number(costoConv).toLocaleString("es-CO", { maximumFractionDigits: 2 })}</td>
+                    <td>
+                      <span style={{ fontWeight: 700, color: "#6366f1" }}>{totalDeals}</span>
+                    </td>
+                    <td style={{ fontWeight: 600, color: "#0ea5e9" }}>
+                      ${Number(costoConv).toLocaleString("es-CO", { maximumFractionDigits: 2 })}
+                    </td>
                   </tr>
                 );
               })}
