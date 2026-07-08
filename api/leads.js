@@ -4,8 +4,40 @@ import { ASESOR_IDS, ETAPAS, getRango, compensarFecha, fechaFin, fechaColombia, 
 const FIELDS = [
   "ID", "TITLE", "ASSIGNED_BY_ID", "STAGE_ID", "SOURCE_ID",
   "DATE_CREATE", "OPPORTUNITY", "CATEGORY_ID", "NAME", "LAST_NAME",
-  "UF_CRM_1769101707140", "CONTACT_ID", "PHONE", "UF_CRM_PHONE", "EMAIL"
+  "UF_CRM_1769101707140", "CONTACT_ID"
 ];
+
+async function fetchContactos(contactIds) {
+  const mapa = {};
+  const base = process.env.BITRIX_REST_URL;
+
+  for (let i = 0; i < contactIds.length; i += 50) {
+    const lote = contactIds.slice(i, i + 50);
+    const body = new URLSearchParams();
+    lote.forEach((id, idx) => body.append(`filter[ID][${idx}]`, id));
+    body.append("select[0]", "ID");
+    body.append("select[1]", "PHONE");
+    body.append("select[2]", "EMAIL");
+
+    const response = await fetch(`${base}/crm.contact.list.json`, {
+      method: "POST",
+      body,
+    });
+    const data = await response.json();
+    if (data.error) {
+      throw new Error(data.error_description || data.error);
+    }
+
+    (data.result || []).forEach((c) => {
+      mapa[c.ID] = {
+        telefono: c.PHONE?.[0]?.VALUE || "",
+        email: c.EMAIL?.[0]?.VALUE || "",
+      };
+    });
+  }
+
+  return mapa;
+}
 
 function normalizarFecha(raw) {
   if (!raw) return new Date().toISOString();
@@ -29,23 +61,6 @@ function nombreAsesor(assignedById) {
 
 export default async function handler(req, res) {
   try {
-    if (req.query.debug === "contact") {
-      const { dealId } = req.query;
-      const base = process.env.BITRIX_REST_URL;
-
-      const dealRes = await fetch(`${base}/crm.deal.get.json?id=${dealId}`);
-      const deal = await dealRes.json();
-
-      let contact = null;
-      const contactId = deal.result?.CONTACT_ID;
-      if (contactId) {
-        const contactRes = await fetch(`${base}/crm.contact.get.json?id=${contactId}`);
-        contact = await contactRes.json();
-      }
-
-      return res.status(200).json({ ok: true, deal, contact });
-    }
-
     const { range, asesor, fuente } = req.query;
     const { from, to } = getRango(range);
 
@@ -58,8 +73,12 @@ export default async function handler(req, res) {
 
     const deals = await fetchDeals(filter, FIELDS);
 
+    const contactIds = Array.from(new Set(deals.map((d) => d.CONTACT_ID).filter(Boolean)));
+    const contactMap = await fetchContactos(contactIds);
+
     let leads = deals.map((deal) => {
       const fechaCreacion = normalizarFecha(deal.DATE_CREATE);
+      const contacto = contactMap[deal.CONTACT_ID];
       return {
         id: deal.ID,
         titulo: deal.TITLE,
@@ -68,8 +87,8 @@ export default async function handler(req, res) {
         cliente: [deal.NAME, deal.LAST_NAME].filter(Boolean).join(' ').trim() || deal.TITLE?.split(' - ')[1] || 'Sin nombre',
         asesorId: deal.ASSIGNED_BY_ID,
         asesor: nombreAsesor(deal.ASSIGNED_BY_ID),
-        telefono: deal.PHONE?.[0]?.VALUE || deal.UF_CRM_PHONE || "",
-        email: deal.EMAIL?.[0]?.VALUE || "",
+        telefono: contacto?.telefono || "",
+        email: contacto?.email || "",
         etapa: ETAPAS[deal.STAGE_ID] || deal.STAGE_ID,
         etapaRaw: deal.STAGE_ID,
         oportunidad: deal.OPPORTUNITY,
