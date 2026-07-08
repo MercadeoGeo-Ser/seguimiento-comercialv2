@@ -4,7 +4,8 @@ import { ASESOR_IDS, ETAPAS, getRango, compensarFecha, fechaFin, fechaColombia, 
 const FIELDS = [
   "ID", "TITLE", "ASSIGNED_BY_ID", "STAGE_ID", "SOURCE_ID",
   "DATE_CREATE", "OPPORTUNITY", "CATEGORY_ID", "NAME", "LAST_NAME",
-  "UF_CRM_1769101707140", "CONTACT_ID", "CLOSEDATE", "CURRENCY_ID"
+  "UF_CRM_1769101707140", "CONTACT_ID", "CLOSEDATE", "CURRENCY_ID",
+  "COMMENTS"
 ];
 
 async function fetchContactos(contactIds) {
@@ -61,20 +62,6 @@ function nombreAsesor(assignedById) {
 
 export default async function handler(req, res) {
   try {
-    if (req.query.debug === "fields") {
-      const base = process.env.BITRIX_REST_URL;
-      const dealRes = await fetch(`${base}/crm.deal.get.json?id=${req.query.dealId}`);
-      const deal = await dealRes.json();
-      return res.status(200).json({ ok: true, deal: deal.result });
-    }
-
-    if (req.query.debug === "fielddefs") {
-      const base = process.env.BITRIX_REST_URL;
-      const defRes = await fetch(`${base}/crm.deal.fields.json`);
-      const defs = await defRes.json();
-      return res.status(200).json({ ok: true, fields: defs.result });
-    }
-
     const { range, asesor, fuente, etapa, desde, hasta } = req.query;
     const { from, to } = getRango(range, desde, hasta);
 
@@ -117,6 +104,7 @@ export default async function handler(req, res) {
             ? parseFloat(deal.OPPORTUNITY || 0) / TRM
             : parseFloat(deal.OPPORTUNITY || 0),
         fechaCierre: deal.CLOSEDATE ? normalizarFecha(deal.CLOSEDATE) : null,
+        comentarios: deal.COMMENTS || "",
         formulario: deal.UF_CRM_1769101707140 || null,
         fuente: clasificarFuente(deal),
         fechaCreacion,

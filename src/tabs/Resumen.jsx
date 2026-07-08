@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { RANGOS } from "../constants.js";
 
 function colorTasaCaptura(tasa) {
@@ -6,6 +6,125 @@ function colorTasaCaptura(tasa) {
   if (valor >= 90) return "#16a34a";
   if (valor >= 70) return "#d97706";
   return "#dc2626";
+}
+
+function colorEtapa(etapa) {
+  if (etapa === "Contacto inicial") return { bg: "#ede9fe", color: "#6d28d9" };
+  if (etapa === "No contesta") return { bg: "#fef9c3", color: "#854d0e" };
+  if (etapa.includes("cotización") || etapa.includes("Cotización")) return { bg: "#dbeafe", color: "#1d4ed8" };
+  if (etapa.includes("Ganado")) return { bg: "#dcfce7", color: "#16a34a" };
+  if (etapa.includes("Perdido")) return { bg: "#fef2f2", color: "#dc2626" };
+  return { bg: "#f1f5f9", color: "#64748b" };
+}
+
+function tiempoRelativo(isoString) {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60000);
+  const horas = Math.floor(diff / 3600000);
+  const dias = Math.floor(diff / 86400000);
+  if (mins < 60) return `hace ${mins} min`;
+  if (horas < 24) return `hace ${horas} h`;
+  return `hace ${dias} día${dias > 1 ? "s" : ""}`;
+}
+
+function limpiarComentario(texto) {
+  return (texto || "—").replace(/\[\/?(p|br)\]/gi, " ").trim() || "—";
+}
+
+function SkeletonSubTabla() {
+  return (
+    <div style={{ padding: "16px 32px" }}>
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="skeleton" style={{ height: 14, width: "100%", marginBottom: 10 }} />
+      ))}
+    </div>
+  );
+}
+
+function SubTablaAsesor({ asesorId, range, desde, hasta }) {
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargar() {
+      setLoading(true);
+      const qs = new URLSearchParams({ range, asesor: asesorId });
+      if (range === "custom") {
+        qs.set("desde", desde);
+        qs.set("hasta", hasta);
+      }
+
+      try {
+        const response = await fetch(`/api/leads?${qs.toString()}`);
+        const data = await response.json();
+        if (cancelado) return;
+        setLeads(data.ok ? data.leads : []);
+      } catch {
+        if (!cancelado) setLeads([]);
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    }
+
+    cargar();
+    return () => {
+      cancelado = true;
+    };
+  }, [asesorId, range, desde, hasta]);
+
+  if (loading) return <SkeletonSubTabla />;
+
+  if (leads.length === 0) {
+    return (
+      <div style={{ padding: "16px 32px", fontSize: 13, color: "#94a3b8" }}>
+        Sin deals en este período
+      </div>
+    );
+  }
+
+  return (
+    <table className="table" style={{ margin: 0 }}>
+      <thead>
+        <tr>
+          <th style={{ paddingLeft: 32 }}>Cliente</th>
+          <th>Formulario</th>
+          <th>Etapa</th>
+          <th>Comentarios</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody>
+        {leads.map((lead) => {
+          const badge = colorEtapa(lead.etapa);
+          return (
+            <tr key={lead.id} style={{ background: "white" }}>
+              <td style={{ paddingLeft: 32, fontWeight: 500 }}>{lead.cliente}</td>
+              <td style={{ fontSize: 13, color: "#6366f1" }}>{lead.formulario || "—"}</td>
+              <td>
+                <span
+                  style={{
+                    background: badge.bg,
+                    color: badge.color,
+                    padding: "2px 8px",
+                    borderRadius: 20,
+                    fontSize: 12,
+                  }}
+                >
+                  {lead.etapa}
+                </span>
+              </td>
+              <td style={{ fontSize: 12, color: "#64748b", maxWidth: 300 }}>
+                {limpiarComentario(lead.comentarios)}
+              </td>
+              <td style={{ fontSize: 13, color: "#94a3b8" }}>{tiempoRelativo(lead.fechaCreacion)}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
 }
 
 function MetricCard({ label, value, color }) {
@@ -46,6 +165,7 @@ export default function Resumen() {
   const [captura, setCaptura] = useState({ totalMeta: 0, totalBitrix: 0 });
   const [porEtapa, setPorEtapa] = useState({});
   const [totalLeads, setTotalLeads] = useState(0);
+  const [expandido, setExpandido] = useState(null);
 
   const rangoListo = range !== "custom" || (desde && hasta);
 
@@ -245,38 +365,54 @@ export default function Resumen() {
           ) : (
             <tbody>
               {asesores.map((a) => (
-                <tr key={a.id}>
-                  <td>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span className="avatar" style={{ backgroundColor: a.color }}>
-                        {a.nombre.charAt(0).toUpperCase()}
-                      </span>
-                      <span>{a.nombre}</span>
-                    </div>
-                  </td>
-                  <td>{a.totalLeads}</td>
-                  <td>{a.metaAds}</td>
-                  <td>{a.sinGestionar}</td>
-                  <td>{a.enGestion}</td>
-                  <td>{a.ganados}</td>
-                  <td>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ flex: 1, background: "#f1f5f9", borderRadius: 4, height: 6 }}>
-                        <div
-                          style={{
-                            width: `${a.conversion}%`,
-                            background: "#16a34a",
-                            borderRadius: 4,
-                            height: 6,
-                          }}
-                        />
+                <Fragment key={a.id}>
+                  <tr
+                    onClick={() => setExpandido(expandido === a.id ? null : a.id)}
+                    style={{ cursor: "pointer", background: expandido === a.id ? "#f8fafc" : "white" }}
+                  >
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                          {expandido === a.id ? "▼" : "▶"}
+                        </span>
+                        <span className="avatar" style={{ backgroundColor: a.color }}>
+                          {a.nombre.charAt(0).toUpperCase()}
+                        </span>
+                        <span>{a.nombre}</span>
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#16a34a", minWidth: 40 }}>
-                        {a.conversion}%
-                      </span>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                    <td>{a.totalLeads}</td>
+                    <td>{a.metaAds}</td>
+                    <td>{a.sinGestionar}</td>
+                    <td>{a.enGestion}</td>
+                    <td>{a.ganados}</td>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ flex: 1, background: "#f1f5f9", borderRadius: 4, height: 6 }}>
+                          <div
+                            style={{
+                              width: `${a.conversion}%`,
+                              background: "#16a34a",
+                              borderRadius: 4,
+                              height: 6,
+                            }}
+                          />
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#16a34a", minWidth: 40 }}>
+                          {a.conversion}%
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {expandido === a.id && (
+                    <tr>
+                      <td colSpan={7} style={{ padding: 0, background: "#f8fafc" }}>
+                        <SubTablaAsesor asesorId={a.id} range={range} desde={desde} hasta={hasta} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           )}
