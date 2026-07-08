@@ -61,6 +61,13 @@ function nombreAsesor(assignedById) {
 
 export default async function handler(req, res) {
   try {
+    if (req.query.debug === "fields") {
+      const base = process.env.BITRIX_REST_URL;
+      const dealRes = await fetch(`${base}/crm.deal.get.json?id=${req.query.dealId}`);
+      const deal = await dealRes.json();
+      return res.status(200).json({ ok: true, deal: deal.result });
+    }
+
     const { range, asesor, fuente, etapa, desde, hasta } = req.query;
     const { from, to } = getRango(range, desde, hasta);
 
