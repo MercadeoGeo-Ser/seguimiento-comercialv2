@@ -67,6 +67,53 @@ async function contarLeads(formId, sinceTs, untilTs, pageToken) {
   return leads.length;
 }
 
+function datosLeadFormulario(lead, formName) {
+  const campos = {};
+  (lead.field_data || []).forEach((f) => {
+    campos[f.name] = f.values?.[0] || "";
+  });
+
+  return {
+    id: lead.id,
+    nombre: `${campos.first_name || campos.nombre || ""} ${campos.last_name || campos.apellido || ""}`.trim(),
+    telefono: campos.phone_number || campos.celular || campos.telefono || "",
+    email: campos.email || campos.correo || "",
+    createdTime: lead.created_time,
+    formulario: formName,
+    fuente: "Meta Ads",
+  };
+}
+
+async function obtenerLeadsFormulario(form, sinceTs, untilTs, pageToken) {
+  const filtering = JSON.stringify([
+    { field: "time_created", operator: "GREATER_THAN", value: sinceTs },
+    { field: "time_created", operator: "LESS_THAN", value: untilTs },
+  ]);
+
+  const datos = await fetchAllMeta(
+    `${GRAPH_URL}/${form.id}/leads?fields=field_data,created_time&filtering=${encodeURIComponent(filtering)}&limit=100&access_token=${pageToken}`
+  );
+
+  return datos.map((lead) => datosLeadFormulario(lead, form.name));
+}
+
+async function obtenerLeadsMeta(pageToken, range) {
+  const { sinceTs, untilTs } = rangoTimestamps(range);
+  const forms = await getAllForms(pageToken, PAGE_ID);
+  const formsActivos = forms.filter((f) => (f.leads_count || 0) > 0);
+
+  const leads = [];
+  for (let i = 0; i < formsActivos.length; i += BATCH) {
+    const lote = formsActivos.slice(i, i + BATCH);
+    const grupos = await Promise.all(
+      lote.map((f) => obtenerLeadsFormulario(f, sinceTs, untilTs, pageToken))
+    );
+    grupos.forEach((grupo) => leads.push(...grupo));
+  }
+
+  return { ok: true, leads, total: leads.length };
+}
+
 async function obtenerCampanasWhatsapp(pageToken, range) {
   const { from: desde, to: hasta } = getRango(range);
   const timeRange = encodeURIComponent(JSON.stringify({ since: desde, until: hasta }));
@@ -112,6 +159,7 @@ async function obtenerCampanasWhatsapp(pageToken, range) {
 
 const BATCH = 5;
 const TTL = 30 * 60 * 1000; // 30 minutos
+const TTL_LEADS = 15 * 60 * 1000; // 15 minutos
 
 // Variable de modulo: persiste entre invocaciones mientras la instancia
 // serverless siga viva (cache en memoria, no compartida entre regiones).
@@ -121,10 +169,12 @@ export default async function handler(req, res) {
   try {
     const range = req.query.range || "today";
     const tipo = req.query.tipo;
-    const cacheKey = tipo === "whatsapp" ? `whatsapp_${range}` : `meta_${range}`;
+    const wantsLeads = req.query.leads === "1";
+    const cacheKey = wantsLeads ? `leads_${range}` : tipo === "whatsapp" ? `whatsapp_${range}` : `meta_${range}`;
+    const ttl = wantsLeads ? TTL_LEADS : TTL;
     const ahora = Date.now();
 
-    if (cache[cacheKey] && ahora - cache[cacheKey].ts < TTL) {
+    if (cache[cacheKey] && ahora - cache[cacheKey].ts < ttl) {
       return res.status(200).json({ ...cache[cacheKey].data, cached: true });
     }
 
@@ -136,6 +186,12 @@ export default async function handler(req, res) {
 
     if (tipo === "whatsapp") {
       const resultado = await obtenerCampanasWhatsapp(PAGE_TOKEN, range);
+      cache[cacheKey] = { data: resultado, ts: ahora };
+      return res.status(200).json(resultado);
+    }
+
+    if (wantsLeads) {
+      const resultado = await obtenerLeadsMeta(PAGE_TOKEN, range);
       cache[cacheKey] = { data: resultado, ts: ahora };
       return res.status(200).json(resultado);
     }

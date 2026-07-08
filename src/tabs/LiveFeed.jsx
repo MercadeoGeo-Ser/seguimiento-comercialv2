@@ -80,28 +80,50 @@ export default function LiveFeed() {
   const [error, setError] = useState(null);
   const [filtroEtapa, setFiltroEtapa] = useState(null);
   const [captura, setCaptura] = useState({ totalMeta: 0, totalBitrix: 0 });
+  const [huerfanos, setHuerfanos] = useState([]);
 
   useEffect(() => {
     let cancelado = false;
 
     async function cargarCaptura() {
       try {
-        const [leadsRes, metaRes] = await Promise.all([
-          fetch(`/api/leads?range=${range}`),
-          fetch(`/api/meta?range=${range}`),
+        const [leadsRes, metaLeadsRes] = await Promise.all([
+          fetch(`/api/leads?range=${range}`).then((r) => r.json()),
+          fetch(`/api/meta?leads=1&range=${range}`).then((r) => r.json()),
         ]);
-        const leadsJson = await leadsRes.json();
-        const metaJson = await metaRes.json();
         if (cancelado) return;
 
-        if (leadsJson.ok && metaJson.ok) {
-          const totalBitrix = (leadsJson.leads || []).filter(
-            (l) => l.fuente === "Meta Ads"
-          ).length;
-          setCaptura({ totalMeta: metaJson.totalMeta || 0, totalBitrix });
+        if (leadsRes.ok && metaLeadsRes.ok) {
+          const telefonosBitrix = new Set(
+            (leadsRes.leads || [])
+              .map((l) => l.telefono?.replace(/\D/g, "").slice(-10))
+              .filter(Boolean)
+          );
+
+          const huerfanosDetectados = (metaLeadsRes.leads || [])
+            .filter((l) => {
+              const tel = l.telefono?.replace(/\D/g, "").slice(-10);
+              return tel && !telefonosBitrix.has(tel);
+            })
+            .map((l) => ({
+              ...l,
+              id: `meta_${l.id}`,
+              huerfano: true,
+              etapa: "Sin registrar en Bitrix",
+              asesor: "—",
+            }));
+
+          setCaptura({
+            totalMeta: metaLeadsRes.total || 0,
+            totalBitrix: (leadsRes.leads || []).length,
+          });
+          setHuerfanos(huerfanosDetectados);
         }
       } catch {
-        if (!cancelado) setCaptura({ totalMeta: 0, totalBitrix: 0 });
+        if (!cancelado) {
+          setCaptura({ totalMeta: 0, totalBitrix: 0 });
+          setHuerfanos([]);
+        }
       }
     }
 
@@ -154,7 +176,6 @@ export default function LiveFeed() {
     (lead) => lead.fuente === "WhatsApp" || lead.fuente === "Orgánico Social"
   ).length;
 
-  const perdidos = captura.totalMeta - captura.totalBitrix;
   const tasaCaptura =
     captura.totalMeta > 0 ? ((captura.totalBitrix / captura.totalMeta) * 100).toFixed(1) : "0";
 
@@ -165,6 +186,12 @@ export default function LiveFeed() {
   });
 
   const leadsMostrados = filtroEtapa ? leads.filter((lead) => lead.etapa === filtroEtapa) : leads;
+
+  const mostrarHuerfanos =
+    !asesor &&
+    (!fuente || fuente === "Meta Ads") &&
+    (!filtroEtapa || filtroEtapa === "Sin registrar en Bitrix");
+  const filasTabla = mostrarHuerfanos ? [...leadsMostrados, ...huerfanos] : leadsMostrados;
 
   return (
     <div className="flex flex-col gap-4 p-6">
@@ -216,7 +243,7 @@ export default function LiveFeed() {
         />
         <SummaryPill
           label="Perdidos"
-          value={<span className={perdidos > 0 ? "text-red-600" : "text-gray-900"}>{perdidos}</span>}
+          value={<span className={huerfanos.length > 0 ? "text-red-600" : "text-gray-900"}>{huerfanos.length}</span>}
         />
         <SummaryPill label="Sin gestionar" value={sinGestionarCount} />
         <SummaryPill label="Otros" value={otrosCount} />
@@ -268,7 +295,38 @@ export default function LiveFeed() {
             <SkeletonRows />
           ) : (
             <tbody>
-              {leadsMostrados.map((lead) => {
+              {filasTabla.map((lead) => {
+                if (lead.huerfano) {
+                  return (
+                    <tr key={lead.id} style={{ background: "#fffbeb", borderLeft: "3px solid #f59e0b" }}>
+                      <td className="px-4 py-3" style={{ color: "#92400e", fontWeight: 500 }}>
+                        ⚠️ Meta #{lead.id.replace("meta_", "")}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{lead.nombre}</td>
+                      <td className="px-4 py-3">
+                        <span className="badge badge-meta">Meta Ads</span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{lead.formulario}</td>
+                      <td className="px-4 py-3" style={{ color: "#94a3b8" }}>—</td>
+                      <td className="px-4 py-3 text-gray-500">{tiempoRelativo(lead.createdTime)}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          style={{
+                            background: "#fef9c3",
+                            color: "#854d0e",
+                            padding: "2px 10px",
+                            borderRadius: 20,
+                            fontSize: 12,
+                            fontWeight: 500,
+                          }}
+                        >
+                          ⚠️ Sin registrar en Bitrix
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                }
+
                 const asesorInfo = asesorPorId(lead.asesorId);
                 return (
                   <tr key={lead.id} className="border-b border-gray-100 last:border-0">
@@ -306,7 +364,7 @@ export default function LiveFeed() {
           )}
         </table>
 
-        {!loading && !error && leadsMostrados.length === 0 && (
+        {!loading && !error && filasTabla.length === 0 && (
           <div className="px-4 py-10 text-center text-sm text-gray-500">
             {filtroEtapa ? "Sin leads en esta etapa" : "Sin leads en este período"}
           </div>

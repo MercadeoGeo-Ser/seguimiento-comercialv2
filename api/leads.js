@@ -4,7 +4,7 @@ import { ASESOR_IDS, ETAPAS, getRango, compensarFecha, fechaFin, fechaColombia, 
 const FIELDS = [
   "ID", "TITLE", "ASSIGNED_BY_ID", "STAGE_ID", "SOURCE_ID",
   "DATE_CREATE", "OPPORTUNITY", "CATEGORY_ID", "NAME", "LAST_NAME",
-  "UF_CRM_1769101707140", "CONTACT_ID"
+  "UF_CRM_1769101707140", "CONTACT_ID", "PHONE", "UF_CRM_PHONE"
 ];
 
 function normalizarFecha(raw) {
@@ -51,6 +51,7 @@ export default async function handler(req, res) {
         cliente: [deal.NAME, deal.LAST_NAME].filter(Boolean).join(' ').trim() || deal.TITLE?.split(' - ')[1] || 'Sin nombre',
         asesorId: deal.ASSIGNED_BY_ID,
         asesor: nombreAsesor(deal.ASSIGNED_BY_ID),
+        telefono: deal.PHONE?.[0]?.VALUE || deal.UF_CRM_PHONE || "",
         etapa: ETAPAS[deal.STAGE_ID] || deal.STAGE_ID,
         etapaRaw: deal.STAGE_ID,
         oportunidad: deal.OPPORTUNITY,
@@ -68,7 +69,9 @@ export default async function handler(req, res) {
       leads = leads.filter((lead) => lead.fuente === fuente);
     }
 
-    res.status(200).json({ ok: true, leads, total: leads.length });
+    const telefonosBitrix = Array.from(new Set(leads.map((l) => l.telefono).filter(Boolean)));
+
+    res.status(200).json({ ok: true, leads, total: leads.length, telefonosBitrix });
   } catch (error) {
     res.status(500).json({ ok: false, error: error.message });
   }
