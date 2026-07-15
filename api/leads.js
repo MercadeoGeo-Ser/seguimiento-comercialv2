@@ -62,19 +62,6 @@ function nombreAsesor(assignedById) {
 
 export default async function handler(req, res) {
   try {
-    if (req.query.debug === "fields") {
-      const fieldsRes = await fetch(`${process.env.BITRIX_REST_URL}/crm.deal.fields.json`);
-      const json = await fieldsRes.json();
-      const campos = Object.entries(json.result || {})
-        .filter(([, v]) => {
-          const title = (v.title || "").toLowerCase();
-          return title.match(/calific|tipific|observ|causal|p[eé]rdida|fr[ií]o|tibio|caliente|gesti[oó]n|akira/i);
-        })
-        .map(([k, v]) => ({ campo: k, titulo: v.title, tipo: v.type }));
-      const campoConocido = json.result?.UF_CRM_1771437628136;
-      return res.status(200).json({ campos, campoConocido });
-    }
-
     const { range, asesor, fuente, etapa, desde, hasta } = req.query;
     const { from, to } = getRango(range, desde, hasta);
 
