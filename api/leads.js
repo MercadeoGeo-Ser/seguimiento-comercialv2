@@ -62,28 +62,6 @@ function nombreAsesor(assignedById) {
 
 export default async function handler(req, res) {
   try {
-    if (req.query.debug === "fields2") {
-      const fieldsRes = await fetch(`${process.env.BITRIX_REST_URL}/crm.deal.fields.json`);
-      const json = await fieldsRes.json();
-
-      const keywords = /calific|tipific|observ|causal|p[eé]rdida|fr[ií]o|tibio|caliente|gesti[oó]n|akira|comentar|seguim/i;
-
-      const campos = Object.entries(json.result || {})
-        .filter(([, v]) => {
-          const texts = [v.title, v.listLabel, v.formLabel, v.filterLabel].filter(Boolean).join(" ");
-          return keywords.test(texts);
-        })
-        .map(([k, v]) => ({
-          campo: k,
-          titulo: v.title,
-          listLabel: v.listLabel,
-          formLabel: v.formLabel,
-          tipo: v.type,
-        }));
-
-      return res.status(200).json({ total: campos.length, campos });
-    }
-
     const { range, asesor, fuente, etapa, desde, hasta } = req.query;
     const { from, to } = getRango(range, desde, hasta);
 
