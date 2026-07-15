@@ -60,54 +60,8 @@ function nombreAsesor(assignedById) {
   return asesor ? asesor.nombre : null;
 }
 
-async function primerDealEnEtapa(base, stageId) {
-  const body = new URLSearchParams();
-  body.append("filter[CATEGORY_ID]", "49");
-  body.append("filter[STAGE_ID]", stageId);
-  body.append("order[DATE_CREATE]", "DESC");
-  body.append("select[0]", "ID");
-  body.append("start", "0");
-
-  const response = await fetch(`${base}/crm.deal.list.json`, { method: "POST", body });
-  const data = await response.json();
-  if (data.error) throw new Error(data.error_description || data.error);
-  return data.result?.[0]?.ID || null;
-}
-
-function esVacio(valor) {
-  if (valor === "" || valor === "0" || valor === false || valor === null || valor === undefined) return true;
-  if (Array.isArray(valor) && valor.length === 0) return true;
-  return false;
-}
-
 export default async function handler(req, res) {
   try {
-    if (req.query.debug === "etapaAvanzada") {
-      const base = process.env.BITRIX_REST_URL;
-      let dealId = await primerDealEnEtapa(base, "C49:LOSE");
-      let stageUsado = "C49:LOSE";
-      if (!dealId) {
-        dealId = await primerDealEnEtapa(base, "C49:UC_P9SE7Z");
-        stageUsado = "C49:UC_P9SE7Z";
-      }
-      if (!dealId) {
-        return res.status(200).json({ ok: true, mensaje: "No se encontraron deals en LOSE ni No contesta" });
-      }
-
-      const dealRes = await fetch(`${base}/crm.deal.get.json?id=${dealId}`);
-      const dealData = await dealRes.json();
-      const deal = dealData.result || {};
-
-      const camposPoblados = {};
-      Object.entries(deal).forEach(([key, value]) => {
-        if (key.startsWith("UF_CRM_") && !esVacio(value)) {
-          camposPoblados[key] = value;
-        }
-      });
-
-      return res.status(200).json({ ok: true, dealId, stageUsado, camposPoblados });
-    }
-
     const { range, asesor, fuente, etapa, desde, hasta } = req.query;
     const { from, to } = getRango(range, desde, hasta);
 
