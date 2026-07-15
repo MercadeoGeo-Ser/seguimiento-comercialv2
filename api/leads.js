@@ -5,8 +5,45 @@ const FIELDS = [
   "ID", "TITLE", "ASSIGNED_BY_ID", "STAGE_ID", "SOURCE_ID",
   "DATE_CREATE", "OPPORTUNITY", "CATEGORY_ID", "NAME", "LAST_NAME",
   "UF_CRM_1769101707140", "CONTACT_ID", "CLOSEDATE", "CURRENCY_ID",
-  "COMMENTS"
+  "COMMENTS",
+  "UF_CRM_1769399437",    // Tipificacion Akira
+  "UF_CRM_1784039355677", // Calificación del lead
+  "UF_CRM_1770751137374", // Causales de pérdida comercial
+  "UF_CRM_1778256241048", // Causales de pérdida prospección
+  "UF_CRM_1771437628136", // Observaciones causales de pérdida
 ];
+
+let enumsCache = null;
+let enumsCacheTs = 0;
+const ENUMS_TTL = 6 * 60 * 60 * 1000; // 6 horas
+
+async function getEnums() {
+  if (enumsCache && Date.now() - enumsCacheTs < ENUMS_TTL) return enumsCache;
+
+  const response = await fetch(`${process.env.BITRIX_REST_URL}/crm.deal.fields.json`);
+  const json = await response.json();
+  const fields = json.result || {};
+
+  const mapaDe = (campo) =>
+    Object.fromEntries((fields[campo]?.items || []).map((i) => [i.ID, i.VALUE]));
+
+  enumsCache = {
+    tipificacionAkira: mapaDe("UF_CRM_1769399437"),
+    calificacion: mapaDe("UF_CRM_1784039355677"),
+    causalPerdida: mapaDe("UF_CRM_1770751137374"),
+    causalProspeccion: mapaDe("UF_CRM_1778256241048"),
+  };
+  enumsCacheTs = Date.now();
+
+  return enumsCache;
+}
+
+function resolverEnum(deal, campo, mapa) {
+  const val = deal[campo];
+  if (!val) return "";
+  const id = Array.isArray(val) ? String(val[0]) : String(val);
+  return mapa[id] || "";
+}
 
 async function fetchContactos(contactIds) {
   const mapa = {};
@@ -79,7 +116,7 @@ export default async function handler(req, res) {
     const deals = await fetchDeals(filter, FIELDS);
 
     const contactIds = Array.from(new Set(deals.map((d) => d.CONTACT_ID).filter(Boolean)));
-    const contactMap = await fetchContactos(contactIds);
+    const [contactMap, enums] = await Promise.all([fetchContactos(contactIds), getEnums()]);
 
     let leads = deals.map((deal) => {
       const fechaCreacion = normalizarFecha(deal.DATE_CREATE);
@@ -105,6 +142,11 @@ export default async function handler(req, res) {
             : parseFloat(deal.OPPORTUNITY || 0),
         fechaCierre: deal.CLOSEDATE ? normalizarFecha(deal.CLOSEDATE) : null,
         comentarios: deal.COMMENTS || "",
+        tipificacionAkira: resolverEnum(deal, "UF_CRM_1769399437", enums.tipificacionAkira),
+        calificacion: resolverEnum(deal, "UF_CRM_1784039355677", enums.calificacion),
+        causalPerdida: resolverEnum(deal, "UF_CRM_1770751137374", enums.causalPerdida),
+        causalProspeccion: resolverEnum(deal, "UF_CRM_1778256241048", enums.causalProspeccion),
+        observaciones: deal.UF_CRM_1771437628136 || "",
         formulario: deal.UF_CRM_1769101707140 || null,
         fuente: clasificarFuente(deal),
         fechaCreacion,

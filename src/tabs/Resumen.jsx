@@ -31,6 +31,27 @@ function limpiarComentario(texto) {
   return (texto || "—").replace(/\[\/?(p|br)\]/gi, " ").trim() || "—";
 }
 
+function colorCalificacion(calificacion) {
+  if (calificacion === "FRÍO") return { bg: "#dbeafe", color: "#1d4ed8" };
+  if (calificacion === "CALIENTE") return { bg: "#fef2f2", color: "#dc2626" };
+  return null;
+}
+
+const COLOR_PREFIJO_TIPIFICACION = {
+  SEG: { bg: "#dcfce7", color: "#16a34a" },
+  NC: { bg: "#fff7ed", color: "#c2410c" },
+  DES: { bg: "#fef2f2", color: "#dc2626" },
+  APL: { bg: "#dbeafe", color: "#1d4ed8" },
+  EFE: { bg: "#f3e8ff", color: "#7e22ce" },
+};
+
+function formatearTipificacion(tipificacion) {
+  const match = tipificacion.match(/^\(([A-Z]+)\)\s*(.+)$/);
+  if (!match) return { texto: tipificacion, colores: { bg: "#f1f5f9", color: "#64748b" } };
+  const [, prefijo, texto] = match;
+  return { texto, colores: COLOR_PREFIJO_TIPIFICACION[prefijo] || { bg: "#f1f5f9", color: "#64748b" } };
+}
+
 function SkeletonSubTabla() {
   return (
     <div style={{ padding: "16px 32px" }}>
@@ -91,13 +112,19 @@ function SubTablaAsesor({ asesorId, range, desde, hasta }) {
           <th style={{ paddingLeft: 32 }}>Cliente</th>
           <th>Formulario</th>
           <th>Etapa</th>
+          <th>Calificación</th>
+          <th>Tipificación</th>
+          <th>Causal pérdida</th>
           <th>Comentarios</th>
+          <th>Observaciones</th>
           <th>Fecha</th>
         </tr>
       </thead>
       <tbody>
         {leads.map((lead) => {
           const badge = colorEtapa(lead.etapa);
+          const califColores = colorCalificacion(lead.calificacion);
+          const tipificacion = lead.tipificacionAkira ? formatearTipificacion(lead.tipificacionAkira) : null;
           return (
             <tr key={lead.id} style={{ background: "white" }}>
               <td style={{ paddingLeft: 32, fontWeight: 500 }}>{lead.cliente}</td>
@@ -115,8 +142,50 @@ function SubTablaAsesor({ asesorId, range, desde, hasta }) {
                   {lead.etapa}
                 </span>
               </td>
+              <td>
+                {califColores ? (
+                  <span
+                    style={{
+                      background: califColores.bg,
+                      color: califColores.color,
+                      padding: "2px 8px",
+                      borderRadius: 20,
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {lead.calificacion}
+                  </span>
+                ) : (
+                  <span style={{ color: "#cbd5e1" }}>—</span>
+                )}
+              </td>
+              <td>
+                {tipificacion ? (
+                  <span
+                    style={{
+                      background: tipificacion.colores.bg,
+                      color: tipificacion.colores.color,
+                      padding: "2px 8px",
+                      borderRadius: 20,
+                      fontSize: 12,
+                    }}
+                  >
+                    {tipificacion.texto}
+                  </span>
+                ) : (
+                  <span style={{ color: "#cbd5e1" }}>—</span>
+                )}
+              </td>
+              <td style={{ fontSize: 12, color: "#dc2626", fontWeight: 500 }}>
+                {lead.causalPerdida || ""}
+              </td>
               <td style={{ fontSize: 12, color: "#64748b", maxWidth: 300 }}>
                 {limpiarComentario(lead.comentarios)}
+              </td>
+              <td style={{ fontSize: 12, color: "#64748b", maxWidth: 250 }}>
+                {lead.observaciones ? lead.observaciones.slice(0, 80) : "—"}
+                {lead.observaciones?.length > 80 ? "..." : ""}
               </td>
               <td style={{ fontSize: 13, color: "#94a3b8" }}>{tiempoRelativo(lead.fechaCreacion)}</td>
             </tr>
