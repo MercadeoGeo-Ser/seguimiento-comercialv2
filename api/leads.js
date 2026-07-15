@@ -62,6 +62,32 @@ function nombreAsesor(assignedById) {
 
 export default async function handler(req, res) {
   try {
+    if (req.query.debug === "enums") {
+      const fieldsRes = await fetch(`${process.env.BITRIX_REST_URL}/crm.deal.fields.json`);
+      const json = await fieldsRes.json();
+      const fields = json.result || {};
+
+      const camposEnum = [
+        "UF_CRM_1769399437", // Tipificacion Akira
+        "UF_CRM_1784039355677", // Calificación del lead
+        "UF_CRM_1770751137374", // Causales de pérdida comercial
+        "UF_CRM_1778256241048", // Causales de pérdida prospección
+      ];
+
+      const resultado = {};
+      camposEnum.forEach((campo) => {
+        const field = fields[campo];
+        if (field?.items) {
+          resultado[campo] = {
+            label: field.listLabel || field.formLabel || campo,
+            opciones: field.items.map((i) => ({ id: i.ID, valor: i.VALUE })),
+          };
+        }
+      });
+
+      return res.status(200).json(resultado);
+    }
+
     const { range, asesor, fuente, etapa, desde, hasta } = req.query;
     const { from, to } = getRango(range, desde, hasta);
 
